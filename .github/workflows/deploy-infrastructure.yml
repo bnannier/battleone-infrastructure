@@ -1,0 +1,204 @@
+name: Deploy Infrastructure to DigitalOcean
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker-compose.infrastructure.yml'
+      - 'deploy-infrastructure.sh'
+      - 'ory/**'
+      - '.github/workflows/deploy-infrastructure.yml'
+  workflow_dispatch:
+    inputs:
+      force_redeploy:
+        description: 'Force redeploy infrastructure even if already running'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  deploy-infrastructure:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout infrastructure code
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          echo "🔍 Validating required secrets..."
+          
+          # Check SSH secrets
+          if [ -z "${{ secrets.DO_SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ DO_SSH_PRIVATE_KEY secret is missing"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DO_DROPLET_IP }}" ]; then
+            echo "❌ DO_DROPLET_IP secret is missing" 
+            exit 1
+          fi
+          if [ -z "${{ secrets.DO_USERNAME }}" ]; then
+            echo "❌ DO_USERNAME secret is missing"
+            exit 1
+          fi
+          
+          # Check database secrets
+          if [ -z "${{ secrets.POSTGRES_PASSWORD }}" ]; then
+            echo "❌ POSTGRES_PASSWORD secret is missing"
+            exit 1
+          fi
+          if [ -z "${{ secrets.REDIS_PASSWORD }}" ]; then
+            echo "❌ REDIS_PASSWORD secret is missing"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured"
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Test SSH connectivity
+          echo "🔍 Testing SSH connectivity..."
+          if ! ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_DROPLET_IP }} "echo 'SSH test successful'"; then
+            echo "❌ SSH connection failed to ${{ secrets.DO_DROPLET_IP }}"
+            exit 1
+          fi
+          
+          echo "🔑 Adding droplet to known hosts..."
+          ssh-keyscan -H ${{ secrets.DO_DROPLET_IP }} >> ~/.ssh/known_hosts
+          
+          # Configure SSH with longer timeouts for deployment
+          cat >> ~/.ssh/config << EOF
+          Host ${{ secrets.DO_DROPLET_IP }}
+            ServerAliveInterval 60
+            ServerAliveCountMax 10
+            ConnectTimeout 30
+            TCPKeepAlive yes
+          EOF
+
+      - name: Deploy Infrastructure to DigitalOcean
+        env:
+          DO_DROPLET_IP: ${{ secrets.DO_DROPLET_IP }}
+          DO_USERNAME: ${{ secrets.DO_USERNAME }}
+          # Database configuration
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'battleone' }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'battleone_user' }}
+          # Kratos configuration
+          KRATOS_LOG_LEVEL: ${{ secrets.KRATOS_LOG_LEVEL || 'warn' }}
+          # Deployment options
+          FORCE_REDEPLOY: ${{ github.event.inputs.force_redeploy }}
+        run: |
+          echo "🚀 Starting infrastructure deployment..."
+          
+          # Create directory structure on droplet
+          ssh $DO_USERNAME@$DO_DROPLET_IP "mkdir -p /opt/battleone/infrastructure"
+          
+          # Copy infrastructure files to droplet
+          echo "📦 Copying infrastructure files to droplet..."
+          scp -r . $DO_USERNAME@$DO_DROPLET_IP:/opt/battleone/infrastructure/
+          
+          # Deploy infrastructure
+          echo "🔧 Executing infrastructure deployment..."
+          ssh $DO_USERNAME@$DO_DROPLET_IP "
+            export POSTGRES_PASSWORD='$POSTGRES_PASSWORD'
+            export REDIS_PASSWORD='$REDIS_PASSWORD'
+            export POSTGRES_DB='$POSTGRES_DB'
+            export POSTGRES_USER='$POSTGRES_USER'
+            export KRATOS_LOG_LEVEL='$KRATOS_LOG_LEVEL'
+            
+            cd /opt/battleone/infrastructure
+            
+            # Check if infrastructure is already running
+            if [ '$FORCE_REDEPLOY' = 'true' ] || ! docker ps | grep -q 'battleone-postgres\|battleone-redis\|battleone-kratos'; then
+              echo '🚀 Deploying infrastructure...'
+              chmod +x deploy-infrastructure.sh
+              ./deploy-infrastructure.sh
+            else
+              echo '✅ Infrastructure already running, skipping deployment'
+              echo 'Use force_redeploy=true to redeploy infrastructure'
+              echo ''
+              echo '📊 Current infrastructure status:'
+              docker ps --filter name=battleone --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+            fi
+          "
+
+      - name: Infrastructure health check
+        run: |
+          echo "🏥 Performing comprehensive infrastructure health checks..."
+          sleep 30
+          
+          # Test all infrastructure services
+          ssh ${{ secrets.DO_USERNAME }}@${{ secrets.DO_DROPLET_IP }} "
+            echo '🔍 Testing infrastructure services...'
+            
+            # Test PostgreSQL
+            echo 'Testing PostgreSQL...'
+            if docker exec battleone-postgres pg_isready -U ${POSTGRES_USER:-battleone_user} -d ${POSTGRES_DB:-battleone}; then
+              echo '✅ PostgreSQL is healthy'
+            else
+              echo '❌ PostgreSQL health check failed'
+              docker logs battleone-postgres --tail=20
+              exit 1
+            fi
+            
+            # Test Redis
+            echo 'Testing Redis...'
+            if docker exec battleone-redis redis-cli ping | grep -q PONG; then
+              echo '✅ Redis is healthy'
+            else
+              echo '❌ Redis health check failed'
+              docker logs battleone-redis --tail=20
+              exit 1
+            fi
+            
+            # Test Kratos
+            echo 'Testing Kratos...'
+            if curl -f http://localhost:4433/health/ready; then
+              echo '✅ Kratos is healthy'
+            else
+              echo '❌ Kratos health check failed'
+              docker logs battleone-kratos --tail=20
+              exit 1
+            fi
+            
+            echo ''
+            echo '🎉 All infrastructure services are healthy!'
+            echo ''
+            echo '📊 Infrastructure status:'
+            docker ps --filter name=battleone --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+            echo ''
+            echo '💻 Resource usage:'
+            docker stats --no-stream --format 'table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}' | grep battleone
+          "
+
+      - name: Infrastructure deployment summary
+        run: |
+          echo "## ⚡ Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server**: ${{ secrets.DO_DROPLET_IP }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **PostgreSQL**: ✅ Running on port 5432" >> $GITHUB_STEP_SUMMARY
+          echo "- **Redis**: ✅ Running on port 6379" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kratos**: ✅ Running on ports 4433/4434" >> $GITHUB_STEP_SUMMARY
+          echo "- **Network**: ✅ battleone-network created" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Services (Internal Access)**:" >> $GITHUB_STEP_SUMMARY
+          echo "- PostgreSQL: \`postgres:5432\` (from BFF containers)" >> $GITHUB_STEP_SUMMARY
+          echo "- Redis: \`redis:6379\` (from BFF containers)" >> $GITHUB_STEP_SUMMARY
+          echo "- Kratos Public API: \`kratos:4433\` (from BFF containers)" >> $GITHUB_STEP_SUMMARY
+          echo "- Kratos Admin API: \`kratos:4434\` (from BFF containers)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📝 **Next Steps**:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Deploy BFF application using the [Deploy Backend workflow](https://github.com/bnannier/battleone-bff/actions)" >> $GITHUB_STEP_SUMMARY
+          echo "2. BFF will automatically connect to this infrastructure" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify deployment completion
+        if: success()
+        run: |
+          echo "🎉 Infrastructure deployment completed successfully!"
+          echo "🔗 Infrastructure is ready for BFF deployment"
+          echo "📊 View infrastructure status at: http://${{ secrets.DO_DROPLET_IP }}:4433/health/ready"

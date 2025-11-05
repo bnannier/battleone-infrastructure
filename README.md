@@ -30,8 +30,11 @@ This folder contains all the infrastructure dependencies that need to be deploye
 ```
 battleone-infrastructure/
 ├── README.md                           # This file
+├── GITHUB_SECRETS.md                   # GitHub Actions setup guide
 ├── docker-compose.infrastructure.yml   # Infrastructure services
 ├── deploy-infrastructure.sh            # Infrastructure deployment script
+├── .github/workflows/
+│   └── deploy-infrastructure.yml       # GitHub Actions workflow
 └── ory/                                # Kratos configuration
     ├── kratos.yml                      # Main Kratos config
     ├── identity.schema.json            # User identity schema
@@ -45,11 +48,34 @@ battleone-infrastructure/
 
 ## Infrastructure Deployment
 
-### Prerequisites
+### 🚀 Option 1: GitHub Actions (Recommended)
+
+**Prerequisites**: 
+- DigitalOcean droplet with SSH access
+- GitHub secrets configured (see [GITHUB_SECRETS.md](./GITHUB_SECRETS.md))
+
+**Deploy via GitHub Actions**:
+1. **Configure secrets**: Follow [GITHUB_SECRETS.md](./GITHUB_SECRETS.md) to set up required secrets
+2. **Trigger deployment**:
+   - **Automatic**: Push changes to `main` branch
+   - **Manual**: Go to Actions → "Deploy Infrastructure to DigitalOcean" → "Run workflow"
+
+**Required GitHub Secrets**:
+- `DO_SSH_PRIVATE_KEY` - SSH private key for droplet access
+- `DO_DROPLET_IP` - Droplet IP address (e.g., `167.99.184.98`)
+- `DO_USERNAME` - SSH username (usually `root`)
+- `POSTGRES_PASSWORD` - Secure PostgreSQL password
+- `REDIS_PASSWORD` - Secure Redis password
+
+📖 **[Complete setup guide →](./GITHUB_SECRETS.md)**
+
+### 🛠️ Option 2: Manual Deployment
+
+**Prerequisites**:
 - Docker and Docker Compose installed on the droplet
 - Required environment variables set
 
-### Required Environment Variables
+**Required Environment Variables**:
 ```bash
 export POSTGRES_PASSWORD="your_postgres_password"
 export REDIS_PASSWORD="your_redis_password" 
@@ -58,9 +84,10 @@ export POSTGRES_USER="battleone_user"
 export KRATOS_LOG_LEVEL="warn"
 ```
 
-### Deploy Infrastructure
+**Deploy Infrastructure**:
 ```bash
-# Copy this folder to the droplet
+# Clone and copy to droplet
+git clone https://github.com/bnannier/battleone-infrastructure.git
 scp -r battleone-infrastructure/ user@droplet:/opt/battleone/infrastructure/
 
 # SSH to droplet and deploy
@@ -70,9 +97,9 @@ chmod +x deploy-infrastructure.sh
 ./deploy-infrastructure.sh
 ```
 
-### Manual Deployment
+### 🔧 Option 3: Direct Docker Compose
 ```bash
-# Start infrastructure services
+# Start infrastructure services directly
 docker compose -f docker-compose.infrastructure.yml up -d
 
 # Check status
