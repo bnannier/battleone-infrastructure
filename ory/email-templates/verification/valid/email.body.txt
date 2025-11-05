@@ -1,0 +1,20 @@
+Welcome to BattleOne!
+
+To complete your account setup, please verify your email address by clicking the link below:
+{{ .VerificationURL }}
+
+This verification link will expire in 1 hour for security reasons.
+
+Once verified, you'll have full access to all BattleOne features including:
+- Create and manage your stories
+- Generate AI-powered video content
+- Access your personal dashboard
+- Customize your profile and preferences
+
+If you didn't create a BattleOne account, you can safely ignore this email.
+
+Best regards,
+The BattleOne Team
+
+---
+This is an automated message from BattleOne. Please do not reply to this email.
