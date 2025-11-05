@@ -28,7 +28,7 @@ This folder contains all the infrastructure dependencies that need to be deploye
 ## Files Structure
 
 ```
-kratos_deploy/
+battleone-infrastructure/
 ├── README.md                           # This file
 ├── docker-compose.infrastructure.yml   # Infrastructure services
 ├── deploy-infrastructure.sh            # Infrastructure deployment script
@@ -61,7 +61,7 @@ export KRATOS_LOG_LEVEL="warn"
 ### Deploy Infrastructure
 ```bash
 # Copy this folder to the droplet
-scp -r kratos_deploy/ user@droplet:/opt/battleone/infrastructure/
+scp -r battleone-infrastructure/ user@droplet:/opt/battleone/infrastructure/
 
 # SSH to droplet and deploy
 ssh user@droplet
