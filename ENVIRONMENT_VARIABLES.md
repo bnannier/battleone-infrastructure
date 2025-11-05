@@ -9,7 +9,7 @@ This document contains all environment variables and their configured values for
 |----------|-------|---------|
 | `DO_DROPLET_IP` | `167.99.184.98` | DigitalOcean droplet IP address |
 | `DO_USERNAME` | `root` | SSH username for droplet access |
-| `DO_SSH_PRIVATE_KEY` | *[Ed25519 Private Key]* | SSH private key for authentication |
+| `DO_SSH_PRIVATE_KEY` | `-----BEGIN OPENSSH PRIVATE KEY-----`<br>`b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW`<br>`QyNTUxOQAAACATLhPHc6zNzWrJQOKzLAoI4nM7evItrVKphcfmlqt3awAAAKCwB7OksAez`<br>`pAAAAAtzc2gtZWQyNTUxOQAAACATLhPHc6zNzWrJQOKzLAoI4nM7evItrVKphcfmlqt3aw`<br>`AAAEBn5VA1STKsPLC3quB250lIXaRuvMpN80GV2sH78eaE5RMuE8dzrM3NaslA4rMsCgji`<br>`czt68i2tUqmFx+aWq3drAAAAGmJuYW5uaWVyQGQyOjQ0OjEyOjc0OjQ4OjczAQID`<br>`-----END OPENSSH PRIVATE KEY-----` | SSH private key for authentication |
 
 ### Database Configuration
 | Variable | Value | Purpose |
@@ -58,6 +58,11 @@ postgres://battleone_user:Q0124lWwMhTu3pejo+mqvXy7bm6DxBNoilxr+0JM+Lg=@postgres:
 ```
 redis://:J3tPwtIzHzh5YO5NKamJ/XwCLWuehFR3lavbaFv0KEw=@redis:6379/0
 ```
+
+### SSH Public Key
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `DO_SSH_PUBLIC_KEY` | `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBMuE8dzrM3NaslA4rMsCgjiczt68i2tUqmFx+aWq3dr bnannier@d2:44:12:74:48:73` | SSH public key (add to droplet's authorized_keys) |
 
 ## 🔒 Security Notes
 
