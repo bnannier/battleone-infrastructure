@@ -3,7 +3,7 @@
 
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
@@ -80,14 +80,14 @@ resource "digitalocean_volume" "battleone_data" {
 
 # Create the main infrastructure droplet
 resource "digitalocean_droplet" "battleone_infrastructure" {
-  image    = "docker-20-04"  # Ubuntu 20.04 with Docker pre-installed
+  image    = "docker-20-04" # Ubuntu 20.04 with Docker pre-installed
   name     = "battleone-infrastructure"
   region   = var.region
   size     = var.droplet_size
   vpc_uuid = digitalocean_vpc.battleone_vpc.id
-  
+
   ssh_keys = [digitalocean_ssh_key.battleone_key.id]
-  
+
   # User data script to prepare the droplet
   user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
     postgres_password = var.postgres_password
@@ -124,21 +124,21 @@ resource "null_resource" "mount_volume" {
     inline = [
       # Create mount point
       "mkdir -p /mnt/battleone-data",
-      
+
       # Mount the volume (it should be at /dev/sda)
       "mount -o defaults /dev/sda /mnt/battleone-data",
-      
+
       # Add to fstab for persistent mounting
       "echo '/dev/sda /mnt/battleone-data ext4 defaults 0 0' >> /etc/fstab",
-      
+
       # Create directories for data
       "mkdir -p /mnt/battleone-data/postgres",
       "mkdir -p /mnt/battleone-data/redis",
       "mkdir -p /mnt/battleone-data/kratos",
-      
+
       # Set proper permissions
-      "chown -R 999:999 /mnt/battleone-data/postgres",  # postgres user in container
-      "chown -R 999:999 /mnt/battleone-data/redis",     # redis user in container
+      "chown -R 999:999 /mnt/battleone-data/postgres", # postgres user in container
+      "chown -R 999:999 /mnt/battleone-data/redis",    # redis user in container
       "chmod 755 /mnt/battleone-data/kratos"
     ]
 
@@ -184,25 +184,25 @@ resource "null_resource" "deploy_infrastructure" {
   provisioner "remote-exec" {
     inline = [
       "cd /opt/battleone",
-      
+
       # Set environment variables
       "export POSTGRES_PASSWORD='${var.postgres_password}'",
       "export REDIS_PASSWORD='${var.redis_password}'",
       "export POSTGRES_DB='${var.postgres_db}'",
       "export POSTGRES_USER='${var.postgres_user}'",
       "export KRATOS_LOG_LEVEL='${var.kratos_log_level}'",
-      
+
       # Deploy with Docker Compose
       "docker compose -f docker-compose.infrastructure.yml down || true",
       "docker compose -f docker-compose.infrastructure.yml pull",
       "docker compose -f docker-compose.infrastructure.yml up -d",
-      
+
       # Wait for services to be ready
       "sleep 30",
-      
+
       # Verify services are running
       "docker compose -f docker-compose.infrastructure.yml ps",
-      
+
       # Test service health
       "docker exec battleone-postgres pg_isready -U ${var.postgres_user} -d ${var.postgres_db}",
       "docker exec battleone-redis redis-cli ping",
