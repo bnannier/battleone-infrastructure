@@ -9,6 +9,10 @@ terraform {
       source  = "digitalocean/digitalocean"
       version = "~> 2.34"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.4"
+    }
   }
 }
 
@@ -19,15 +23,20 @@ provider "digitalocean" {
 
 # Create SSH key for droplet access
 resource "digitalocean_ssh_key" "battleone_key" {
-  name       = "battleone-infrastructure-key"
+  name       = "battleone-infrastructure-key-${random_id.key_suffix.hex}"
   public_key = var.ssh_public_key
+}
+
+# Generate random suffix for unique resource names
+resource "random_id" "key_suffix" {
+  byte_length = 4
 }
 
 # Create a new VPC for our infrastructure
 resource "digitalocean_vpc" "battleone_vpc" {
   name     = "battleone-network"
   region   = var.region
-  ip_range = "10.10.0.0/24"
+  ip_range = "10.124.0.0/24"
 }
 
 # Create a firewall for our droplet
