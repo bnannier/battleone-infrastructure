@@ -88,6 +88,25 @@ jobs:
         run: terraform fmt -check
         continue-on-error: true
 
+      - name: Create Terraform state bucket
+        run: |
+          echo "🪣 Creating Terraform state bucket if needed..."
+          # Install s3cmd for DigitalOcean Spaces
+          pip install s3cmd
+          
+          # Configure s3cmd
+          cat > ~/.s3cfg << EOF
+          [default]
+          access_key = ${{ secrets.SPACES_ACCESS_KEY }}
+          secret_key = ${{ secrets.SPACES_SECRET_KEY }}
+          host_base = nyc3.digitaloceanspaces.com
+          host_bucket = %(bucket)s.nyc3.digitaloceanspaces.com
+          use_https = True
+          EOF
+          
+          # Create bucket if it doesn't exist
+          s3cmd mb s3://battleone-terraform-state || echo "Bucket already exists or creation failed - continuing..."
+
       - name: Terraform Init
         run: |
           echo "🚀 Initializing Terraform..."
