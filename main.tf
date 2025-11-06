@@ -4,6 +4,15 @@
 terraform {
   required_version = ">= 1.0"
 
+  backend "s3" {
+    endpoint                    = "https://nyc3.digitaloceanspaces.com"
+    key                        = "terraform/battleone-infrastructure.tfstate"
+    bucket                     = "battleone-terraform-state"
+    region                     = "us-east-1"
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+  }
+
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
