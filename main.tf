@@ -34,14 +34,14 @@ resource "random_id" "key_suffix" {
 
 # Create a new VPC for our infrastructure
 resource "digitalocean_vpc" "battleone_vpc" {
-  name     = "battleone-network"
+  name     = "battleone-network-${random_id.key_suffix.hex}"
   region   = var.region
   ip_range = "10.124.0.0/24"
 }
 
 # Create a firewall for our droplet
 resource "digitalocean_firewall" "battleone_firewall" {
-  name = "battleone-infrastructure-firewall"
+  name = "battleone-infrastructure-firewall-${random_id.key_suffix.hex}"
 
   droplet_ids = [digitalocean_droplet.battleone_infrastructure.id]
 
@@ -81,7 +81,7 @@ resource "digitalocean_firewall" "battleone_firewall" {
 # Create a volume for persistent data
 resource "digitalocean_volume" "battleone_data" {
   region                  = var.region
-  name                    = "battleone-data-volume"
+  name                    = "battleone-data-volume-${random_id.key_suffix.hex}"
   size                    = 20
   initial_filesystem_type = "ext4"
   description             = "Volume for BattleOne database and Redis data"
@@ -90,7 +90,7 @@ resource "digitalocean_volume" "battleone_data" {
 # Create the main infrastructure droplet
 resource "digitalocean_droplet" "battleone_infrastructure" {
   image    = "docker-20-04" # Ubuntu 20.04 with Docker pre-installed
-  name     = "battleone-infrastructure"
+  name     = "battleone-infrastructure-${random_id.key_suffix.hex}"
   region   = var.region
   size     = var.droplet_size
   vpc_uuid = digitalocean_vpc.battleone_vpc.id
