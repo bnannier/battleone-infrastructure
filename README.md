@@ -312,4 +312,4 @@ curl http://localhost:4433/health/ready
 - PostgreSQL and Redis are bound to `127.0.0.1` (localhost only)
 - Kratos public/admin APIs are bound to `127.0.0.1` 
 - All services communicate over the internal Docker network
-- Strong passwords should be used for all database connections
+- Strong passwords should be used for all database connections# Trigger Terraform deployment with real API token
