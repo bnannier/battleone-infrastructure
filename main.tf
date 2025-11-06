@@ -5,7 +5,9 @@ terraform {
   required_version = ">= 1.0"
 
   backend "s3" {
-    endpoint                    = "https://nyc3.digitaloceanspaces.com"
+    endpoints = {
+      s3 = "https://nyc3.digitaloceanspaces.com"
+    }
     key                        = "terraform/battleone-infrastructure.tfstate"
     bucket                     = "battleone-terraform-state"
     region                     = "us-east-1"
