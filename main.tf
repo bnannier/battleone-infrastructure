@@ -21,8 +21,20 @@ provider "digitalocean" {
   token = var.digitalocean_token
 }
 
-# Create SSH key for droplet access
+# Try to find existing SSH key, create if not found
+data "digitalocean_ssh_keys" "existing_keys" {}
+
+locals {
+  existing_key = [
+    for key in data.digitalocean_ssh_keys.existing_keys.ssh_keys :
+    key if key.public_key == var.ssh_public_key
+  ]
+  use_existing_key = length(local.existing_key) > 0
+}
+
+# Create SSH key for droplet access (only if it doesn't exist)
 resource "digitalocean_ssh_key" "battleone_key" {
+  count      = local.use_existing_key ? 0 : 1
   name       = "battleone-infrastructure-key-${random_id.key_suffix.hex}"
   public_key = var.ssh_public_key
 }
@@ -36,7 +48,7 @@ resource "random_id" "key_suffix" {
 resource "digitalocean_vpc" "battleone_vpc" {
   name     = "battleone-network-${random_id.key_suffix.hex}"
   region   = var.region
-  ip_range = "10.124.0.0/24"
+  ip_range = "10.125.0.0/24"
 }
 
 # Create a firewall for our droplet
@@ -95,7 +107,11 @@ resource "digitalocean_droplet" "battleone_infrastructure" {
   size     = var.droplet_size
   vpc_uuid = digitalocean_vpc.battleone_vpc.id
 
-  ssh_keys = [digitalocean_ssh_key.battleone_key.id]
+  ssh_keys = [
+    local.use_existing_key ?
+    local.existing_key[0].id :
+    digitalocean_ssh_key.battleone_key[0].id
+  ]
 
   # User data script to prepare the droplet
   user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
