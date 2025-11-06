@@ -1,0 +1,226 @@
+name: Deploy Infrastructure with Terraform
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.tf'
+      - 'terraform.tfvars'
+      - 'docker-compose.infrastructure.yml'
+      - 'ory/**'
+      - 'scripts/**'
+      - '.github/workflows/terraform-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action to perform'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+          - plan
+      auto_approve:
+        description: 'Auto-approve the action (skip manual approval)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+  TF_VAR_ssh_private_key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+  TF_VAR_ssh_public_key: ${{ secrets.DO_SSH_PUBLIC_KEY }}
+  TF_VAR_postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
+  TF_VAR_redis_password: ${{ secrets.REDIS_PASSWORD }}
+  TF_VAR_postgres_db: ${{ secrets.POSTGRES_DB || 'battleone' }}
+  TF_VAR_postgres_user: ${{ secrets.POSTGRES_USER || 'battleone_user' }}
+  TF_VAR_kratos_log_level: ${{ secrets.KRATOS_LOG_LEVEL || 'warn' }}
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          echo "🔍 Validating required secrets..."
+          
+          # Check DigitalOcean secrets
+          if [ -z "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" ]; then
+            echo "❌ DIGITALOCEAN_ACCESS_TOKEN secret is missing"
+            exit 1
+          fi
+          
+          # Check SSH secrets
+          if [ -z "${{ secrets.DO_SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ DO_SSH_PRIVATE_KEY secret is missing"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DO_SSH_PUBLIC_KEY }}" ]; then
+            echo "❌ DO_SSH_PUBLIC_KEY secret is missing"
+            exit 1
+          fi
+          
+          # Check database secrets
+          if [ -z "${{ secrets.POSTGRES_PASSWORD }}" ]; then
+            echo "❌ POSTGRES_PASSWORD secret is missing"
+            exit 1
+          fi
+          if [ -z "${{ secrets.REDIS_PASSWORD }}" ]; then
+            echo "❌ REDIS_PASSWORD secret is missing"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        continue-on-error: true
+
+      - name: Terraform Init
+        run: |
+          echo "🚀 Initializing Terraform..."
+          terraform init
+
+      - name: Terraform Validate
+        run: |
+          echo "🔍 Validating Terraform configuration..."
+          terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          echo "📋 Creating Terraform plan..."
+          terraform plan -detailed-exitcode -out=tfplan
+          echo "plan_exitcode=$?" >> $GITHUB_OUTPUT
+
+      - name: Comment Plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { stdout } = await exec.getExecOutput('terraform', ['show', '-no-color', 'tfplan']);
+            
+            const output = `## Terraform Plan
+            
+            <details>
+            <summary>Show Plan</summary>
+            
+            \`\`\`
+            ${stdout}
+            \`\`\`
+            
+            </details>`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Manual Approval
+        if: |
+          github.event_name == 'workflow_dispatch' && 
+          github.event.inputs.action == 'apply' && 
+          github.event.inputs.auto_approve != 'true' &&
+          steps.plan.outputs.plan_exitcode == '2'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.repository_owner }}
+          minimum-approvals: 1
+          issue-title: "Terraform Apply Approval Required"
+          issue-body: |
+            **Terraform Apply Approval Required**
+            
+            Please review the Terraform plan above and approve this workflow to proceed with applying the infrastructure changes.
+            
+            **Action**: ${{ github.event.inputs.action }}
+            **Branch**: ${{ github.ref_name }}
+            **Commit**: ${{ github.sha }}
+
+      - name: Terraform Apply
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+        run: |
+          echo "🚀 Applying Terraform configuration..."
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy
+        if: |
+          github.event_name == 'workflow_dispatch' && 
+          github.event.inputs.action == 'destroy'
+        run: |
+          echo "🗑️ Destroying Terraform infrastructure..."
+          terraform destroy -auto-approve
+
+      - name: Infrastructure Health Check
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+        run: |
+          echo "🏥 Performing infrastructure health checks..."
+          
+          # Get the droplet IP from Terraform output
+          DROPLET_IP=$(terraform output -raw droplet_ip)
+          echo "Infrastructure deployed to: $DROPLET_IP"
+          
+          # Wait for services to be ready
+          echo "⏳ Waiting for services to start..."
+          sleep 60
+          
+          # Test Kratos health endpoint
+          echo "🔍 Testing Kratos health..."
+          max_attempts=10
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            if curl -f "http://$DROPLET_IP:4433/health/ready"; then
+              echo "✅ Kratos is healthy"
+              break
+            else
+              echo "⏳ Attempt $attempt/$max_attempts - Kratos not ready yet..."
+              sleep 30
+              attempt=$((attempt + 1))
+            fi
+          done
+          
+          if [ $attempt -gt $max_attempts ]; then
+            echo "❌ Kratos health check failed after $max_attempts attempts"
+            exit 1
+          fi
+
+      - name: Output Infrastructure Information
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+        run: |
+          echo "## 🎉 Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Droplet IP**: $(terraform output -raw droplet_ip)" >> $GITHUB_STEP_SUMMARY
+          echo "- **PostgreSQL**: ✅ Available on internal network (postgres:5432)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Redis**: ✅ Available on internal network (redis:6379)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kratos**: ✅ Available on internal network (kratos:4433/4434)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ All services healthy" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Health Check URL**: $(terraform output -raw kratos_health_url)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📝 **Next Steps**:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Infrastructure is ready for BFF deployment" >> $GITHUB_STEP_SUMMARY
+          echo "2. Use the connection strings from Terraform outputs in your BFF configuration" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify deployment completion
+        if: success()
+        run: |
+          echo "🎉 Terraform deployment completed successfully!"
+          echo "🔗 Infrastructure is ready at: $(terraform output -raw droplet_ip)"

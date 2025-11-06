@@ -1,0 +1,95 @@
+#cloud-config
+# BattleOne Infrastructure - Cloud Init Script
+# Prepares the DigitalOcean droplet for Docker deployment
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - wget
+  - git
+  - htop
+  - unzip
+
+# Create required directories
+runcmd:
+  # Create application directories
+  - mkdir -p /opt/battleone
+  - mkdir -p /opt/battleone/logs
+  
+  # Set up Docker Compose plugin (latest version)
+  - mkdir -p /usr/local/lib/docker/cli-plugins
+  - curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+  - chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+  
+  # Create battleone-network for container communication
+  - docker network create battleone-network || true
+  
+  # Configure Docker daemon for better performance
+  - |
+    cat > /etc/docker/daemon.json << 'EOF'
+    {
+      "log-driver": "json-file",
+      "log-opts": {
+        "max-size": "10m",
+        "max-file": "3"
+      },
+      "storage-driver": "overlay2"
+    }
+    EOF
+  
+  # Restart Docker to apply configuration
+  - systemctl restart docker
+  - systemctl enable docker
+  
+  # Set up log rotation for application logs
+  - |
+    cat > /etc/logrotate.d/battleone << 'EOF'
+    /opt/battleone/logs/*.log {
+      daily
+      missingok
+      rotate 7
+      compress
+      delaycompress
+      notifempty
+      copytruncate
+    }
+    EOF
+
+# Set timezone
+timezone: UTC
+
+# Configure automatic security updates
+write_files:
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root:root
+    permissions: '0644'
+
+# Create environment file template
+  - path: /opt/battleone/.env.template
+    content: |
+      # BattleOne Infrastructure Environment Variables
+      POSTGRES_PASSWORD=${postgres_password}
+      REDIS_PASSWORD=${redis_password}
+      POSTGRES_DB=${postgres_db}
+      POSTGRES_USER=${postgres_user}
+      KRATOS_LOG_LEVEL=${kratos_log_level}
+    owner: root:root
+    permissions: '0600'
+
+# Final setup commands
+final_message: |
+  BattleOne Infrastructure droplet setup complete!
+  
+  Services:
+  - Docker: $(docker --version)
+  - Docker Compose: $(docker compose version)
+  
+  Network:
+  - battleone-network created
+  
+  Ready for infrastructure deployment.

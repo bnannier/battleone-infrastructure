@@ -1,0 +1,27 @@
+# BattleOne Infrastructure - Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your actual values
+
+# DigitalOcean Configuration
+digitalocean_token = "your_digitalocean_api_token_here"
+region            = "nyc1"
+droplet_size      = "s-2vcpu-2gb"
+
+# SSH Configuration
+ssh_private_key = <<EOF
+-----BEGIN OPENSSH PRIVATE KEY-----
+your_private_key_content_here
+-----END OPENSSH PRIVATE KEY-----
+EOF
+
+ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your_public_key_here"
+
+# Database Configuration
+postgres_password = "your_secure_postgres_password"
+postgres_db       = "battleone"
+postgres_user     = "battleone_user"
+
+# Cache Configuration
+redis_password = "your_secure_redis_password"
+
+# Kratos Configuration
+kratos_log_level = "warn"
