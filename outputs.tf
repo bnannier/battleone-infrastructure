@@ -22,7 +22,7 @@ output "volume_id" {
 
 output "ssh_key_id" {
   description = "ID of the SSH key"
-  value       = digitalocean_ssh_key.battleone_key.id
+  value       = local.use_existing_key ? local.existing_key[0].id : digitalocean_ssh_key.battleone_key[0].id
 }
 
 output "firewall_id" {
