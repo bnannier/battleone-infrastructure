@@ -4,21 +4,20 @@
 terraform {
   required_version = ">= 1.0"
 
-  # Backend will be configured after bucket creation
-  # backend "s3" {
-  #   endpoints = {
-  #     s3 = "https://tor1.digitaloceanspaces.com"
-  #   }
-  #   bucket   = "battleone-terraform-state"
-  #   key      = "terraform.tfstate"
-  #   region   = "us-east-1" # Required for S3 compatibility, actual region is tor1
-  #   
-  #   skip_credentials_validation = true
-  #   skip_metadata_api_check     = true
-  #   skip_requesting_account_id  = true
-  #   skip_region_validation      = true
-  #   use_path_style              = false
-  # }
+  backend "s3" {
+    endpoints = {
+      s3 = "https://tor1.digitaloceanspaces.com"
+    }
+    bucket   = "battleone-terraform-state"
+    key      = "terraform.tfstate"
+    region   = "us-east-1" # Required for S3 compatibility, actual region is tor1
+    
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_requesting_account_id  = true
+    skip_region_validation      = true
+    use_path_style              = false
+  }
 
   required_providers {
     digitalocean = {
@@ -34,19 +33,7 @@ terraform {
 
 # Configure the DigitalOcean Provider
 provider "digitalocean" {
-  token             = var.digitalocean_token
-  spaces_access_id  = var.spaces_access_key
-  spaces_secret_key = var.spaces_secret_key
-}
-
-# Import the existing Terraform state bucket
-resource "digitalocean_spaces_bucket" "terraform_state" {
-  name   = "battleone-terraform-state"
-  region = "tor1"
-  
-  lifecycle {
-    prevent_destroy = true
-  }
+  token = var.digitalocean_token
 }
 
 # Generate random suffix for unique resource names
@@ -76,7 +63,7 @@ resource "digitalocean_ssh_key" "battleone_key" {
 resource "digitalocean_vpc" "battleone_vpc" {
   name     = "battleone-vpc-${random_id.suffix.hex}"
   region   = var.region
-  ip_range = "10.10.0.0/24"
+  ip_range = "10.50.0.0/24"
 }
 
 # Create a firewall for our droplet
