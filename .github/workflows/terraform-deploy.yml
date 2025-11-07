@@ -105,18 +105,16 @@ jobs:
           signature_v2 = False
           EOF
           
-          # Check if bucket exists first
-          echo "🔍 Checking if bucket exists..."
-          if s3cmd ls s3://battleone-terraform-state > /dev/null 2>&1; then
+          # Try to create bucket, ignore if it already exists
+          echo "🔍 Ensuring bucket exists..."
+          if s3cmd mb s3://battleone-terraform-state --region=nyc3 2>&1 | tee /tmp/bucket_creation.log; then
+            echo "✅ Bucket created successfully"
+          elif grep -q "BucketAlreadyExists\|Bucket already exists" /tmp/bucket_creation.log; then
             echo "✅ Bucket already exists"
           else
-            echo "📦 Creating new bucket..."
-            if s3cmd mb s3://battleone-terraform-state --region=nyc3; then
-              echo "✅ Bucket created successfully"
-            else
-              echo "❌ Failed to create bucket"
-              exit 1
-            fi
+            echo "❌ Failed to create bucket:"
+            cat /tmp/bucket_creation.log
+            exit 1
           fi
           
           # Verify bucket is accessible
