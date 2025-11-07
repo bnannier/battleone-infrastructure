@@ -57,6 +57,16 @@ jobs:
             exit 1
           fi
           
+          # Check DigitalOcean Spaces secrets
+          if [ -z "${{ secrets.SPACES_ACCESS_KEY }}" ]; then
+            echo "❌ SPACES_ACCESS_KEY secret is missing"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SPACES_SECRET_KEY }}" ]; then
+            echo "❌ SPACES_SECRET_KEY secret is missing"
+            exit 1
+          fi
+          
           # Check SSH secrets
           if [ -z "${{ secrets.DO_SSH_PRIVATE_KEY }}" ]; then
             echo "❌ DO_SSH_PRIVATE_KEY secret is missing"
