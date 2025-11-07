@@ -62,7 +62,7 @@ resource "random_id" "key_suffix" {
 resource "digitalocean_vpc" "battleone_vpc" {
   name     = "battleone-network-${random_id.key_suffix.hex}"
   region   = var.region
-  ip_range = "10.200.0.0/24"
+  ip_range = "10.100.0.0/24"
 }
 
 # Create a firewall for our droplet
