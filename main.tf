@@ -296,6 +296,22 @@ resource "null_resource" "setup_volume" {
 resource "null_resource" "deploy_services" {
   depends_on = [null_resource.setup_volume]
 
+  # Create deployment directories
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'Creating deployment directories...'",
+      "mkdir -p /opt/battleone/kratos",
+      "echo 'Deployment directories created'"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = "root"
+      private_key = var.ssh_private_key
+      host        = digitalocean_droplet.battleone_droplet.ipv4_address
+    }
+  }
+
   # Upload configuration files
   provisioner "file" {
     source      = "${path.module}/docker-compose.yml"
