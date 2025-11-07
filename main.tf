@@ -340,26 +340,61 @@ resource "null_resource" "deploy_services" {
   # Deploy the services
   provisioner "remote-exec" {
     inline = [
+      # Verify Docker is installed
+      "echo '=== Verifying Docker Installation ==='",
+      "which docker || (echo 'Docker not found!' && exit 1)",
+      "docker --version",
+      "which docker-compose || (echo 'Docker Compose not found!' && exit 1)",
+      "docker-compose --version",
+      
+      # Navigate to deployment directory
+      "echo '=== Navigating to deployment directory ==='",
       "cd /opt/battleone",
+      "pwd",
+      "ls -la",
 
-      # Set environment variables
-      "export POSTGRES_PASSWORD='${var.postgres_password}'",
-      "export POSTGRES_USER='${var.postgres_user}'",
-      "export POSTGRES_DB='${var.postgres_db}'",
-      "export REDIS_PASSWORD='${var.redis_password}'",
+      # Create environment file to avoid shell issues with quotes
+      "echo '=== Creating environment file ==='",
+      "cat > .env << 'EOF'",
+      "POSTGRES_PASSWORD=${var.postgres_password}",
+      "POSTGRES_USER=${var.postgres_user}",
+      "POSTGRES_DB=${var.postgres_db}",
+      "REDIS_PASSWORD=${var.redis_password}",
+      "EOF",
+      "echo 'Environment file created'",
+
+      # Validate docker-compose configuration
+      "echo '=== Validating Docker Compose configuration ==='",
+      "docker-compose config --quiet",
+      "echo 'Docker Compose configuration valid'",
+
+      # Stop any existing services
+      "echo '=== Stopping existing services ==='",
+      "docker-compose down || true",
+
+      # Pull latest images
+      "echo '=== Pulling Docker images ==='",
+      "docker-compose pull",
 
       # Start services
-      "docker-compose down || true",
-      "docker-compose pull",
+      "echo '=== Starting services ==='",
       "docker-compose up -d",
 
-      # Wait for services to be ready
-      "sleep 30",
-
-      # Verify services are running
+      # Check if services started
+      "echo '=== Checking service status ==='",
       "docker-compose ps",
-      "docker exec battleone-postgres pg_isready -U ${var.postgres_user} -d ${var.postgres_db}",
-      "docker exec battleone-redis redis-cli ping"
+
+      # Wait for services to be ready
+      "echo '=== Waiting for services to start ==='",
+      "sleep 60",
+
+      # Final status check
+      "echo '=== Final service status ==='",
+      "docker-compose ps",
+      "echo '=== Checking container logs ==='",
+      "docker-compose logs --tail=10 postgres || true",
+      "docker-compose logs --tail=10 redis || true",
+      "docker-compose logs --tail=10 kratos || true"
     ]
 
     connection {
