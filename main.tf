@@ -39,10 +39,14 @@ provider "digitalocean" {
   spaces_secret_key = var.spaces_secret_key
 }
 
-# Create the Terraform state bucket first
+# Import the existing Terraform state bucket
 resource "digitalocean_spaces_bucket" "terraform_state" {
   name   = "battleone-terraform-state"
   region = "tor1"
+  
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Generate random suffix for unique resource names
@@ -50,8 +54,20 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# Create SSH key for droplet access
+# Try to find existing SSH key, create if not found
+data "digitalocean_ssh_keys" "existing_keys" {}
+
+locals {
+  existing_key = [
+    for key in data.digitalocean_ssh_keys.existing_keys.ssh_keys :
+    key if key.public_key == var.ssh_public_key
+  ]
+  use_existing_key = length(local.existing_key) > 0
+}
+
+# Create SSH key for droplet access (only if it doesn't exist)
 resource "digitalocean_ssh_key" "battleone_key" {
+  count      = local.use_existing_key ? 0 : 1
   name       = "battleone-infrastructure-key-${random_id.suffix.hex}"
   public_key = var.ssh_public_key
 }
@@ -133,7 +149,11 @@ resource "digitalocean_droplet" "battleone_droplet" {
   size     = var.droplet_size
   vpc_uuid = digitalocean_vpc.battleone_vpc.id
 
-  ssh_keys   = [digitalocean_ssh_key.battleone_key.id]
+  ssh_keys = [
+    local.use_existing_key ?
+    local.existing_key[0].id :
+    digitalocean_ssh_key.battleone_key[0].id
+  ]
   volume_ids = [digitalocean_volume.battleone_data.id]
 
   # Cloud-init script to set up the environment
