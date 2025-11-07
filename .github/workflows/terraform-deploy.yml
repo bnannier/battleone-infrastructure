@@ -88,9 +88,9 @@ jobs:
         run: terraform fmt -check
         continue-on-error: true
 
-      - name: Create Terraform state bucket
+      - name: Ensure Terraform state bucket exists
         run: |
-          echo "🪣 Creating Terraform state bucket if needed..."
+          echo "🪣 Ensuring Terraform state bucket is accessible..."
           # Install s3cmd for DigitalOcean Spaces
           pip install s3cmd
           
@@ -105,25 +105,25 @@ jobs:
           signature_v2 = False
           EOF
           
-          # Try to create bucket, ignore if it already exists
-          echo "🔍 Ensuring bucket exists..."
-          if s3cmd mb s3://battleone-terraform-state --region=nyc3 2>&1 | tee /tmp/bucket_creation.log; then
-            echo "✅ Bucket created successfully"
-          elif grep -q "BucketAlreadyExists\|Bucket already exists" /tmp/bucket_creation.log; then
-            echo "✅ Bucket already exists"
-          else
-            echo "❌ Failed to create bucket:"
-            cat /tmp/bucket_creation.log
-            exit 1
-          fi
-          
-          # Verify bucket is accessible
-          echo "🔍 Verifying bucket access..."
-          if s3cmd ls s3://battleone-terraform-state > /dev/null 2>&1; then
+          # Check if we can access the bucket
+          echo "🔍 Testing bucket access..."
+          if s3cmd info s3://battleone-terraform-state > /dev/null 2>&1; then
             echo "✅ Bucket is accessible"
           else
-            echo "❌ Bucket is not accessible"
-            exit 1
+            echo "📦 Bucket not accessible, attempting to create..."
+            # Try to create the bucket
+            s3cmd mb s3://battleone-terraform-state --region=nyc3 || true
+            
+            # Test again after creation attempt
+            echo "🔍 Retesting bucket access..."
+            if s3cmd info s3://battleone-terraform-state > /dev/null 2>&1; then
+              echo "✅ Bucket is now accessible"
+            else
+              echo "❌ Bucket still not accessible. Please check your DigitalOcean Spaces configuration."
+              echo "Debug: Testing basic connectivity..."
+              s3cmd ls || echo "Failed to list any buckets"
+              exit 1
+            fi
           fi
 
       - name: Terraform Init
