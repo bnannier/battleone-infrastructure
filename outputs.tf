@@ -1,58 +1,38 @@
-# BattleOne Infrastructure - Terraform Outputs
+# Outputs for BattleOne Infrastructure
 
 output "droplet_ip" {
-  description = "IP address of the infrastructure droplet"
-  value       = digitalocean_droplet.battleone_infrastructure.ipv4_address
+  description = "Public IP address of the BattleOne droplet"
+  value       = digitalocean_droplet.battleone_droplet.ipv4_address
 }
 
-output "droplet_id" {
-  description = "ID of the infrastructure droplet"
-  value       = digitalocean_droplet.battleone_infrastructure.id
-}
-
-output "vpc_id" {
-  description = "ID of the VPC"
-  value       = digitalocean_vpc.battleone_vpc.id
-}
-
-output "volume_id" {
-  description = "ID of the data volume"
-  value       = digitalocean_volume.battleone_data.id
-}
-
-output "ssh_key_id" {
-  description = "ID of the SSH key"
-  value       = local.use_existing_key ? local.existing_key[0].id : digitalocean_ssh_key.battleone_key[0].id
-}
-
-output "firewall_id" {
-  description = "ID of the firewall"
-  value       = digitalocean_firewall.battleone_firewall.id
+output "droplet_private_ip" {
+  description = "Private IP address of the BattleOne droplet"
+  value       = digitalocean_droplet.battleone_droplet.ipv4_address_private
 }
 
 output "postgres_connection_string" {
-  description = "PostgreSQL connection string (internal network)"
-  value       = "postgres://${var.postgres_user}:${var.postgres_password}@postgres:5432/${var.postgres_db}"
+  description = "PostgreSQL connection string"
+  value       = "postgresql://${var.postgres_user}:${var.postgres_password}@${digitalocean_droplet.battleone_droplet.ipv4_address_private}:5432/${var.postgres_db}"
   sensitive   = true
 }
 
 output "redis_connection_string" {
-  description = "Redis connection string (internal network)"
-  value       = "redis://:${var.redis_password}@redis:6379/0"
+  description = "Redis connection string"
+  value       = "redis://:${var.redis_password}@${digitalocean_droplet.battleone_droplet.ipv4_address_private}:6379"
   sensitive   = true
 }
 
 output "kratos_public_url" {
-  description = "Kratos public API URL (internal network)"
-  value       = "http://kratos:4433"
+  description = "Kratos public API URL"
+  value       = "http://${digitalocean_droplet.battleone_droplet.ipv4_address}:4433"
 }
 
 output "kratos_admin_url" {
-  description = "Kratos admin API URL (internal network)"
-  value       = "http://kratos:4434"
+  description = "Kratos admin API URL"
+  value       = "http://${digitalocean_droplet.battleone_droplet.ipv4_address_private}:4434"
 }
 
-output "kratos_health_url" {
-  description = "Kratos health check URL (external)"
-  value       = "http://${digitalocean_droplet.battleone_infrastructure.ipv4_address}:4433/health/ready"
+output "ssh_connection" {
+  description = "SSH connection command"
+  value       = "ssh root@${digitalocean_droplet.battleone_droplet.ipv4_address}"
 }

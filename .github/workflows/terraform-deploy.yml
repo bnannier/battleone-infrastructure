@@ -1,4 +1,4 @@
-name: Deploy Infrastructure with Terraform
+name: Deploy BattleOne Infrastructure
 
 on:
   push:
@@ -6,9 +6,9 @@ on:
     paths:
       - '*.tf'
       - 'terraform.tfvars'
-      - 'docker-compose.infrastructure.yml'
-      - 'ory/**'
-      - 'scripts/**'
+      - 'docker-compose.yml'
+      - 'kratos/**'
+      - 'cloud-init.yml'
       - '.github/workflows/terraform-deploy.yml'
   workflow_dispatch:
     inputs:
@@ -28,14 +28,22 @@ on:
         type: boolean
 
 env:
+  # DigitalOcean Configuration
   TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
   TF_VAR_ssh_private_key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
   TF_VAR_ssh_public_key: ${{ secrets.DO_SSH_PUBLIC_KEY }}
+  
+  # Database Configuration
   TF_VAR_postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
   TF_VAR_redis_password: ${{ secrets.REDIS_PASSWORD }}
   TF_VAR_postgres_db: ${{ secrets.POSTGRES_DB || 'battleone' }}
   TF_VAR_postgres_user: ${{ secrets.POSTGRES_USER || 'battleone_user' }}
-  TF_VAR_kratos_log_level: ${{ secrets.KRATOS_LOG_LEVEL || 'warn' }}
+  
+  # Infrastructure Settings
+  TF_VAR_region: "tor1"
+  TF_VAR_droplet_size: "s-2vcpu-4gb"
+  
+  # DigitalOcean Spaces for Terraform State
   AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
 
@@ -57,15 +65,15 @@ jobs:
             exit 1
           fi
           
-          # Note: Temporarily not requiring Spaces secrets while using local state
-          # if [ -z "${{ secrets.SPACES_ACCESS_KEY }}" ]; then
-          #   echo "❌ SPACES_ACCESS_KEY secret is missing"
-          #   exit 1
-          # fi
-          # if [ -z "${{ secrets.SPACES_SECRET_KEY }}" ]; then
-          #   echo "❌ SPACES_SECRET_KEY secret is missing"
-          #   exit 1
-          # fi
+          # Check DigitalOcean Spaces secrets
+          if [ -z "${{ secrets.SPACES_ACCESS_KEY }}" ]; then
+            echo "❌ SPACES_ACCESS_KEY secret is missing"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SPACES_SECRET_KEY }}" ]; then
+            echo "❌ SPACES_SECRET_KEY secret is missing"
+            exit 1
+          fi
           
           # Check SSH secrets
           if [ -z "${{ secrets.DO_SSH_PRIVATE_KEY }}" ]; then
@@ -98,47 +106,9 @@ jobs:
         run: terraform fmt -check
         continue-on-error: true
 
-      - name: Ensure Terraform state bucket exists
-        run: |
-          echo "🪣 Ensuring Terraform state bucket is accessible..."
-          # Install s3cmd for DigitalOcean Spaces
-          pip install s3cmd
-          
-          # Configure s3cmd for DigitalOcean Spaces
-          cat > ~/.s3cfg << EOF
-          [default]
-          access_key = ${{ secrets.SPACES_ACCESS_KEY }}
-          secret_key = ${{ secrets.SPACES_SECRET_KEY }}
-          host_base = nyc3.digitaloceanspaces.com
-          host_bucket = %(bucket)s.nyc3.digitaloceanspaces.com
-          use_https = True
-          signature_v2 = False
-          EOF
-          
-          # Check if we can access the bucket
-          echo "🔍 Testing bucket access..."
-          if s3cmd info s3://battleone-terraform-state > /dev/null 2>&1; then
-            echo "✅ Bucket is accessible"
-          else
-            echo "📦 Bucket not accessible, attempting to create..."
-            # Try to create the bucket
-            s3cmd mb s3://battleone-terraform-state --region=nyc3 || true
-            
-            # Test again after creation attempt
-            echo "🔍 Retesting bucket access..."
-            if s3cmd info s3://battleone-terraform-state > /dev/null 2>&1; then
-              echo "✅ Bucket is now accessible"
-            else
-              echo "❌ Bucket still not accessible. Please check your DigitalOcean Spaces configuration."
-              echo "Debug: Testing basic connectivity..."
-              s3cmd ls || echo "Failed to list any buckets"
-              exit 1
-            fi
-          fi
-
       - name: Terraform Init
         run: |
-          echo "🚀 Initializing Terraform..."
+          echo "🚀 Initializing Terraform with DigitalOcean Spaces backend..."
           terraform init
 
       - name: Terraform Validate
@@ -160,7 +130,7 @@ jobs:
           script: |
             const { stdout } = await exec.getExecOutput('terraform', ['show', '-no-color', 'tfplan']);
             
-            const output = `## Terraform Plan
+            const output = `## 🚀 Terraform Plan
             
             <details>
             <summary>Show Plan</summary>
@@ -189,15 +159,21 @@ jobs:
           secret: ${{ github.TOKEN }}
           approvers: ${{ github.repository_owner }}
           minimum-approvals: 1
-          issue-title: "Terraform Apply Approval Required"
+          issue-title: "🚀 Terraform Apply Approval Required"
           issue-body: |
             **Terraform Apply Approval Required**
             
-            Please review the Terraform plan above and approve this workflow to proceed with applying the infrastructure changes.
+            Please review the Terraform plan above and approve this workflow to proceed with applying the BattleOne infrastructure changes.
             
             **Action**: ${{ github.event.inputs.action }}
             **Branch**: ${{ github.ref_name }}
             **Commit**: ${{ github.sha }}
+            
+            **Infrastructure includes:**
+            - DigitalOcean droplet in Toronto (tor1)
+            - PostgreSQL database
+            - Redis cache
+            - Kratos identity management
 
       - name: Terraform Apply
         if: |
@@ -224,11 +200,15 @@ jobs:
           
           # Get the droplet IP from Terraform output
           DROPLET_IP=$(terraform output -raw droplet_ip)
-          echo "Infrastructure deployed to: $DROPLET_IP"
+          echo "🌐 Infrastructure deployed to: $DROPLET_IP"
           
           # Wait for services to be ready
           echo "⏳ Waiting for services to start..."
-          sleep 60
+          sleep 120
+          
+          # Test SSH connectivity
+          echo "🔐 Testing SSH connectivity..."
+          ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts
           
           # Test Kratos health endpoint
           echo "🔍 Testing Kratos health..."
@@ -248,6 +228,8 @@ jobs:
           
           if [ $attempt -gt $max_attempts ]; then
             echo "❌ Kratos health check failed after $max_attempts attempts"
+            echo "🔍 Checking container status..."
+            # Note: This would require SSH access to check container status
             exit 1
           fi
 
@@ -256,21 +238,23 @@ jobs:
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: |
-          echo "## 🎉 Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 BattleOne Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Droplet IP**: $(terraform output -raw droplet_ip)" >> $GITHUB_STEP_SUMMARY
-          echo "- **PostgreSQL**: ✅ Available on internal network (postgres:5432)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Redis**: ✅ Available on internal network (redis:6379)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Kratos**: ✅ Available on internal network (kratos:4433/4434)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: Toronto (tor1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **PostgreSQL**: ✅ Available on internal network" >> $GITHUB_STEP_SUMMARY
+          echo "- **Redis**: ✅ Available on internal network" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kratos**: ✅ Available on $(terraform output -raw kratos_public_url)" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ✅ All services healthy" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **Health Check URL**: $(terraform output -raw kratos_health_url)" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Kratos Public URL**: $(terraform output -raw kratos_public_url)" >> $GITHUB_STEP_SUMMARY
+          echo "🔐 **SSH Access**: $(terraform output -raw ssh_connection)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📝 **Next Steps**:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Infrastructure is ready for BFF deployment" >> $GITHUB_STEP_SUMMARY
-          echo "2. Use the connection strings from Terraform outputs in your BFF configuration" >> $GITHUB_STEP_SUMMARY
+          echo "1. Infrastructure is ready for BattleOne application deployment" >> $GITHUB_STEP_SUMMARY
+          echo "2. Use the connection strings from Terraform outputs in your application configuration" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify deployment completion
         if: success()
         run: |
-          echo "🎉 Terraform deployment completed successfully!"
+          echo "🎉 BattleOne infrastructure deployment completed successfully!"
           echo "🔗 Infrastructure is ready at: $(terraform output -raw droplet_ip)"

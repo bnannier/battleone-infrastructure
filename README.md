@@ -1,315 +1,194 @@
 # BattleOne Infrastructure
 
-Modern infrastructure deployment for BattleOne using Terraform and DigitalOcean.
+This repository contains Terraform configuration to deploy the BattleOne infrastructure on DigitalOcean, including PostgreSQL, Redis, and Kratos identity management.
 
-This repository deploys a complete infrastructure stack including PostgreSQL, Redis, and Ory Kratos that needs to be deployed before the BFF application.
+## Architecture
 
-## Components
+- **Platform**: DigitalOcean
+- **Region**: Toronto (tor1)
+- **Services**: PostgreSQL, Redis, Kratos (Ory Identity)
+- **State Storage**: DigitalOcean Spaces
+- **Deployment**: GitHub Actions
 
-### 1. PostgreSQL Database
-- **Image**: `postgres:15-alpine`
-- **Port**: `127.0.0.1:5432:5432`
-- **Container**: `battleone-postgres`
-- **Purpose**: Primary database for user data, sessions, and application state
+## Infrastructure Components
 
-### 2. Redis Cache
-- **Image**: `redis:7-alpine`  
-- **Port**: `127.0.0.1:6379:6379`
-- **Container**: `battleone-redis`
-- **Purpose**: Session storage, caching, and rate limiting
+### Core Services
+- **PostgreSQL 15**: Primary database with persistent storage
+- **Redis 7**: Cache and session storage with authentication
+- **Kratos v1.0.0**: Identity and user management system
 
-### 3. Ory Kratos Identity Management
-- **Image**: `oryd/kratos:v1.0.0`
-- **Ports**: 
-  - Public API: `127.0.0.1:4433:4433`
-  - Admin API: `127.0.0.1:4434:4434`
-- **Container**: `battleone-kratos`
-- **Purpose**: User authentication, registration, and identity management
-- **Migrations**: Kratos handles its own table creation automatically
+### Infrastructure
+- **DigitalOcean Droplet**: s-2vcpu-4gb in Toronto region
+- **Volume**: 20GB persistent storage for data
+- **VPC**: Private network (10.10.0.0/24)
+- **Firewall**: SSH (22), HTTP (80), HTTPS (443), Kratos (4433)
 
-## Files Structure
+## Prerequisites
 
+### Required GitHub Secrets
+
+Set these secrets in your GitHub repository (Settings → Secrets and variables → Actions):
+
+```bash
+# DigitalOcean Configuration
+DIGITALOCEAN_ACCESS_TOKEN=dop_v1_your_digitalocean_token_here
+
+# DigitalOcean Spaces (for Terraform state)
+SPACES_ACCESS_KEY=DO801XXXXXXXXXXXXX
+SPACES_SECRET_KEY=your_spaces_secret_key_here
+
+# SSH Keys (generate with: ssh-keygen -t rsa -b 4096)
+DO_SSH_PRIVATE_KEY=-----BEGIN OPENSSH PRIVATE KEY-----
+# Your private key content here
+-----END OPENSSH PRIVATE KEY-----
+
+DO_SSH_PUBLIC_KEY=ssh-rsa AAAAB3NzaC1yc2EAAA... your-email@domain.com
+
+# Database Passwords
+POSTGRES_PASSWORD=your-secure-postgres-password
+REDIS_PASSWORD=your-secure-redis-password
+
+# Optional (with defaults)
+POSTGRES_DB=battleone
+POSTGRES_USER=battleone_user
 ```
-battleone-infrastructure/
-├── README.md                           # This file
-├── GITHUB_SECRETS.md                   # GitHub Actions setup guide
-├── docker-compose.infrastructure.yml   # Infrastructure services
-├── deploy-infrastructure.sh            # Infrastructure deployment script
-├── .github/workflows/
-│   └── deploy-infrastructure.yml       # GitHub Actions workflow
-└── ory/                                # Kratos configuration
-    ├── kratos.yml                      # Main Kratos config
-    ├── identity.schema.json            # User identity schema
-    └── email-templates/                # Email templates
+
+### SSH Key Generation
+
+Generate SSH keys for server access:
+
+```bash
+ssh-keygen -t rsa -b 4096 -C "battleone-infrastructure"
 ```
 
-## Deployment Order
+- Copy the **private key** content to `DO_SSH_PRIVATE_KEY` secret
+- Copy the **public key** content to `DO_SSH_PUBLIC_KEY` secret
 
-1. **First**: Deploy infrastructure using this folder
-2. **Second**: Deploy BFF application from the main project
+## Deployment
 
-## 🚀 Quick Start with Terraform
+### Automatic Deployment
+
+The infrastructure automatically deploys when:
+
+1. **Push to main branch** - Automatically applies changes
+2. **Manual trigger** - Use GitHub Actions workflow dispatch
+
+### Manual Deployment Options
+
+Go to **Actions** → **Deploy BattleOne Infrastructure** → **Run workflow**
+
+Choose from:
+- **apply**: Deploy/update infrastructure
+- **plan**: Preview changes
+- **destroy**: Remove all infrastructure
+
+## Terraform State
+
+- **Backend**: DigitalOcean Spaces
+- **Bucket**: `battleone-terraform-state`
+- **Region**: Toronto (tor1)
+- **Key**: `terraform.tfstate`
+
+## Service Access
+
+After deployment, you'll receive:
+
+### Public Access
+- **Kratos API**: `http://DROPLET_IP:4433`
+- **SSH**: `ssh root@DROPLET_IP`
+
+### Internal Services
+- **PostgreSQL**: `postgresql://battleone_user:PASSWORD@localhost:5432/battleone`
+- **Redis**: `redis://:PASSWORD@localhost:6379`
+- **Kratos Admin**: `http://localhost:4434`
+
+## Local Development
 
 ### Prerequisites
+- Terraform >= 1.6
+- DigitalOcean CLI (doctl)
 
-1. **DigitalOcean Account** with API access
-2. **GitHub Repository** with Actions enabled
-3. **SSH Key Pair** for droplet access
-
-### 1. Set Up GitHub Secrets
-
-Run this script to configure all required secrets:
+### Setup Environment
 
 ```bash
-# Required secrets for Terraform deployment
-gh secret set DIGITALOCEAN_ACCESS_TOKEN --body "your_digitalocean_api_token"
-gh secret set DO_SSH_PRIVATE_KEY --body "$(cat private_public/private_key.txt)"
-gh secret set DO_SSH_PUBLIC_KEY --body "$(cat private_public/public_key.txt)"
+# Set Spaces credentials for Terraform state
+export AWS_ACCESS_KEY_ID=DO801ADJ22JYLHKHJK9V
+export AWS_SECRET_ACCESS_KEY=IjdU3WVcForYivTkuiLqrjvr9W22mGudBHVwfYHJS5k
 
-# Database configuration
-gh secret set POSTGRES_PASSWORD --body "$(openssl rand -base64 32)"
-gh secret set REDIS_PASSWORD --body "$(openssl rand -base64 32)"
-
-# Optional configuration (uses defaults if not set)
-gh secret set POSTGRES_DB --body "battleone"
-gh secret set POSTGRES_USER --body "battleone_user"
-gh secret set KRATOS_LOG_LEVEL --body "warn"
+# Copy and customize variables
+cp terraform.tfvars.example terraform.tfvars
 ```
 
-### 2. Deploy Infrastructure
-
-**Automatic Deployment** (on push to main):
-```bash
-git push origin main
-```
-
-**Manual Deployment**:
-1. Go to GitHub Actions tab
-2. Select "Deploy Infrastructure with Terraform"
-3. Click "Run workflow"
-4. Choose action: `apply`, `plan`, or `destroy`
-
-### 3. Verify Deployment
-
-After successful deployment, check the health endpoint:
-```bash
-curl http://YOUR_DROPLET_IP:4433/health/ready
-```
-
-## 🛠️ Local Development
-
-### Terraform Commands
+### Deploy Locally
 
 ```bash
-# Initialize Terraform
 terraform init
-
-# Plan infrastructure changes
 terraform plan
-
-# Apply changes
 terraform apply
-
-# Destroy infrastructure
-terraform destroy
 ```
 
-### Environment Configuration
-
-Create `terraform.tfvars` (copy from `terraform.tfvars.example`):
-```hcl
-digitalocean_token = "your_api_token"
-ssh_private_key    = "your_private_key"
-ssh_public_key     = "your_public_key"
-postgres_password  = "secure_password"
-redis_password     = "secure_password"
-```
-
-## 📁 Project Structure
+## File Structure
 
 ```
-├── main.tf                           # Core Terraform configuration
-├── variables.tf                      # Input variables
-├── outputs.tf                        # Output values
-├── terraform.tfvars.example          # Example variables file
-├── docker-compose.infrastructure.yml # Container definitions
-├── scripts/
-│   └── cloud-init.yml               # Droplet initialization
-├── ory/
-│   └── kratos.yml                   # Kratos configuration
-├── private_public/
-│   ├── private_key.txt              # SSH private key
-│   └── public_key.txt               # SSH public key
+.
+├── main.tf                     # Main Terraform configuration
+├── variables.tf                # Input variables
+├── outputs.tf                  # Output values
+├── terraform.tfvars.example    # Example configuration
+├── cloud-init.yml             # Droplet initialization script
+├── docker-compose.yml         # Services configuration
+├── kratos/
+│   ├── kratos.yml             # Kratos configuration
+│   └── identity.schema.json   # Identity schema
 └── .github/workflows/
-    └── terraform-deploy.yml         # CI/CD workflow
+    └── terraform-deploy.yml   # GitHub Actions deployment
 ```
 
-## 🔧 Infrastructure Resources
+## Health Monitoring
 
-### DigitalOcean Resources Created
+The deployment includes health checks for:
 
-| Resource | Purpose | Configuration |
-|----------|---------|---------------|
-| **Droplet** | Virtual machine | 2 vCPU, 2GB RAM, Ubuntu + Docker |
-| **Volume** | Persistent storage | 20GB for database data |
-| **VPC** | Private networking | 10.10.0.0/24 range |
-| **Firewall** | Security rules | SSH (22), Kratos health (4433) |
-| **SSH Key** | Authentication | Ed25519 key for secure access |
-
-### Docker Services
-
-| Service | Image | Purpose | Port | Data Volume |
-|---------|-------|---------|------|-------------|
-| **postgres** | postgres:15-alpine | Database | 5432 | /mnt/battleone-data/postgres |
-| **redis** | redis:7-alpine | Cache | 6379 | /mnt/battleone-data/redis |
-| **kratos** | oryd/kratos:v1.0.0 | Auth | 4433/4434 | Configuration only |
-
-## Infrastructure Deployment
-
-### 🚀 Option 1: Terraform (Recommended)
-
-**Prerequisites**: 
-- DigitalOcean droplet with SSH access
-- GitHub secrets configured (see [GITHUB_SECRETS.md](./GITHUB_SECRETS.md))
-
-**Deploy via GitHub Actions**:
-1. **Configure secrets**: Follow [GITHUB_SECRETS.md](./GITHUB_SECRETS.md) to set up required secrets
-2. **Trigger deployment**:
-   - **Automatic**: Push changes to `main` branch
-   - **Manual**: Go to Actions → "Deploy Infrastructure to DigitalOcean" → "Run workflow"
-
-**Required GitHub Secrets**:
-- `DO_SSH_PRIVATE_KEY` - SSH private key for droplet access
-- `DO_DROPLET_IP` - Droplet IP address (e.g., `167.99.184.98`)
-- `DO_USERNAME` - SSH username (usually `root`)
-- `POSTGRES_PASSWORD` - Secure PostgreSQL password
-- `REDIS_PASSWORD` - Secure Redis password
-
-📖 **[Complete setup guide →](./GITHUB_SECRETS.md)**
-
-### 🛠️ Option 2: Manual Deployment
-
-**Prerequisites**:
-- Docker and Docker Compose installed on the droplet
-- Required environment variables set
-
-**Required Environment Variables**:
-```bash
-export POSTGRES_PASSWORD="your_postgres_password"
-export REDIS_PASSWORD="your_redis_password" 
-export POSTGRES_DB="battleone"
-export POSTGRES_USER="battleone_user"
-export KRATOS_LOG_LEVEL="warn"
-```
-
-**Deploy Infrastructure**:
-```bash
-# Clone and copy to droplet
-git clone https://github.com/bnannier/battleone-infrastructure.git
-scp -r battleone-infrastructure/ user@droplet:/opt/battleone/infrastructure/
-
-# SSH to droplet and deploy
-ssh user@droplet
-cd /opt/battleone/infrastructure
-chmod +x deploy-infrastructure.sh
-./deploy-infrastructure.sh
-```
-
-### 🔧 Option 3: Direct Docker Compose
-```bash
-# Start infrastructure services directly
-docker compose -f docker-compose.infrastructure.yml up -d
-
-# Check status
-docker compose -f docker-compose.infrastructure.yml ps
-
-# View logs
-docker compose -f docker-compose.infrastructure.yml logs -f
-```
-
-## Network
-
-The infrastructure creates a Docker network called `battleone-network` that the BFF application will connect to. This allows the BFF containers to communicate with the infrastructure services using service names:
-
-- `postgres` - PostgreSQL database
-- `redis` - Redis cache  
-- `kratos` - Kratos identity service
-
-## Health Checks
-
-All services include health checks:
-- **PostgreSQL**: `pg_isready` command
-- **Redis**: `redis-cli ping` command  
-- **Kratos**: HTTP health endpoint `/health/ready`
-
-## Resource Limits
-
-Conservative resource limits are set:
-- **PostgreSQL**: 256MB RAM, 0.4 CPU
-- **Redis**: 128MB RAM, 0.2 CPU
-- **Kratos**: 256MB RAM, 0.3 CPU
-
-## Data Persistence
-
-Persistent volumes are created for:
-- `postgres_data` - PostgreSQL data
-- `redis_data` - Redis data
-
-## Management Commands
-
-```bash
-# Check status
-docker compose -f docker-compose.infrastructure.yml ps
-
-# View logs
-docker compose -f docker-compose.infrastructure.yml logs -f [service_name]
-
-# Stop services
-docker compose -f docker-compose.infrastructure.yml down
-
-# Restart a service
-docker compose -f docker-compose.infrastructure.yml restart [service_name]
-
-# Backup database
-docker exec battleone-postgres pg_dump -U battleone_user battleone > backup.sql
-
-# Access PostgreSQL
-docker exec -it battleone-postgres psql -U battleone_user -d battleone
-
-# Access Redis
-docker exec -it battleone-redis redis-cli
-```
-
-## Troubleshooting
-
-### Check Infrastructure Status
-```bash
-cd /opt/battleone/infrastructure
-docker compose -f docker-compose.infrastructure.yml ps
-```
-
-### View Service Logs
-```bash
-docker compose -f docker-compose.infrastructure.yml logs postgres
-docker compose -f docker-compose.infrastructure.yml logs redis  
-docker compose -f docker-compose.infrastructure.yml logs kratos
-```
-
-### Test Connectivity
-```bash
-# Test PostgreSQL
-docker exec battleone-postgres pg_isready -U battleone_user -d battleone
-
-# Test Redis
-docker exec battleone-redis redis-cli ping
-
-# Test Kratos
-curl http://localhost:4433/health/ready
-```
+- ✅ Kratos API endpoint
+- ✅ PostgreSQL connectivity
+- ✅ Redis connectivity
+- ✅ Docker container status
 
 ## Security Notes
 
-- PostgreSQL and Redis are bound to `127.0.0.1` (localhost only)
-- Kratos public/admin APIs are bound to `127.0.0.1` 
-- All services communicate over the internal Docker network
-- Strong passwords should be used for all database connections# Trigger Terraform deployment with real API token
+- SSH access is restricted by firewall rules
+- Database passwords are managed via GitHub secrets
+- Kratos uses secure session management
+- All data persisted on encrypted volumes
+
+## Troubleshooting
+
+### Check Service Status
+
+```bash
+ssh root@DROPLET_IP
+cd /opt/battleone
+docker-compose ps
+docker-compose logs
+```
+
+### Verify Health
+
+```bash
+curl http://DROPLET_IP:4433/health/ready
+```
+
+### Reset Services
+
+```bash
+ssh root@DROPLET_IP
+cd /opt/battleone
+docker-compose restart
+```
+
+## Support
+
+For issues or questions about the infrastructure deployment, check:
+
+1. GitHub Actions logs for deployment errors
+2. Service logs via SSH access
+3. Terraform state in DigitalOcean Spaces

@@ -4,20 +4,18 @@
 terraform {
   required_version = ">= 1.0"
 
-  # Temporarily using local state - uncomment below when Spaces credentials are available
-  # backend "s3" {
-  #   endpoints = {
-  #     s3 = "https://nyc3.digitaloceanspaces.com"
-  #   }
-  #   key                           = "terraform/battleone-infrastructure.tfstate"
-  #   bucket                        = "battleone-terraform-state"
-  #   region                        = "us-east-1"
-  #   skip_credentials_validation   = true
-  #   skip_metadata_api_check       = true
-  #   skip_requesting_account_id    = true
-  #   skip_region_validation        = true
-  #   use_path_style               = false
-  # }
+  backend "s3" {
+    endpoint = "https://tor1.digitaloceanspaces.com"
+    bucket   = "battleone-terraform-state"
+    key      = "terraform.tfstate"
+    region   = "us-east-1" # Required for S3 compatibility, actual region is tor1
+    
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_requesting_account_id  = true
+    skip_region_validation      = true
+    use_path_style              = false
+  }
 
   required_providers {
     digitalocean = {
@@ -36,41 +34,29 @@ provider "digitalocean" {
   token = var.digitalocean_token
 }
 
-# Try to find existing SSH key, create if not found
-data "digitalocean_ssh_keys" "existing_keys" {}
-
-locals {
-  existing_key = [
-    for key in data.digitalocean_ssh_keys.existing_keys.ssh_keys :
-    key if key.public_key == var.ssh_public_key
-  ]
-  use_existing_key = length(local.existing_key) > 0
-}
-
-# Create SSH key for droplet access (only if it doesn't exist)
-resource "digitalocean_ssh_key" "battleone_key" {
-  count      = local.use_existing_key ? 0 : 1
-  name       = "battleone-infrastructure-key-${random_id.key_suffix.hex}"
-  public_key = var.ssh_public_key
-}
-
 # Generate random suffix for unique resource names
-resource "random_id" "key_suffix" {
+resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# Create a new VPC for our infrastructure
+# Create SSH key for droplet access
+resource "digitalocean_ssh_key" "battleone_key" {
+  name       = "battleone-infrastructure-key-${random_id.suffix.hex}"
+  public_key = var.ssh_public_key
+}
+
+# Create a VPC for our infrastructure
 resource "digitalocean_vpc" "battleone_vpc" {
-  name     = "battleone-network-${random_id.key_suffix.hex}"
+  name     = "battleone-vpc-${random_id.suffix.hex}"
   region   = var.region
-  ip_range = "10.100.0.0/24"
+  ip_range = "10.10.0.0/24"
 }
 
 # Create a firewall for our droplet
 resource "digitalocean_firewall" "battleone_firewall" {
-  name = "battleone-infrastructure-firewall-${random_id.key_suffix.hex}"
+  name = "battleone-firewall-${random_id.suffix.hex}"
 
-  droplet_ids = [digitalocean_droplet.battleone_infrastructure.id]
+  droplet_ids = [digitalocean_droplet.battleone_droplet.id]
 
   # SSH access
   inbound_rule {
@@ -79,7 +65,21 @@ resource "digitalocean_firewall" "battleone_firewall" {
     source_addresses = ["0.0.0.0/0", "::/0"]
   }
 
-  # Kratos public API (health checks)
+  # HTTP for health checks
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "80"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  # HTTPS
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "443"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  # Kratos public API
   inbound_rule {
     protocol         = "tcp"
     port_range       = "4433"
@@ -108,33 +108,29 @@ resource "digitalocean_firewall" "battleone_firewall" {
 # Create a volume for persistent data
 resource "digitalocean_volume" "battleone_data" {
   region                  = var.region
-  name                    = "battleone-data-volume-${random_id.key_suffix.hex}"
+  name                    = "battleone-data-${random_id.suffix.hex}"
   size                    = 20
   initial_filesystem_type = "ext4"
-  description             = "Volume for BattleOne database and Redis data"
+  description             = "Volume for BattleOne database and cache data"
 }
 
 # Create the main infrastructure droplet
-resource "digitalocean_droplet" "battleone_infrastructure" {
+resource "digitalocean_droplet" "battleone_droplet" {
   image    = "docker-20-04" # Ubuntu 20.04 with Docker pre-installed
-  name     = "battleone-infrastructure-${random_id.key_suffix.hex}"
+  name     = "battleone-${random_id.suffix.hex}"
   region   = var.region
   size     = var.droplet_size
   vpc_uuid = digitalocean_vpc.battleone_vpc.id
 
-  ssh_keys = [
-    local.use_existing_key ?
-    local.existing_key[0].id :
-    digitalocean_ssh_key.battleone_key[0].id
-  ]
+  ssh_keys   = [digitalocean_ssh_key.battleone_key.id]
+  volume_ids = [digitalocean_volume.battleone_data.id]
 
-  # User data script to prepare the droplet
-  user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
+  # Cloud-init script to set up the environment
+  user_data = templatefile("${path.module}/cloud-init.yml", {
     postgres_password = var.postgres_password
-    redis_password    = var.redis_password
-    postgres_db       = var.postgres_db
     postgres_user     = var.postgres_user
-    kratos_log_level  = var.kratos_log_level
+    postgres_db       = var.postgres_db
+    redis_password    = var.redis_password
   })
 
   # Wait for droplet to be ready
@@ -151,34 +147,29 @@ resource "digitalocean_droplet" "battleone_infrastructure" {
       host        = self.ipv4_address
     }
   }
-
-  # Attach the volume
-  volume_ids = [digitalocean_volume.battleone_data.id]
 }
 
-# Mount and format the volume
-resource "null_resource" "mount_volume" {
-  depends_on = [digitalocean_droplet.battleone_infrastructure]
+# Mount and set up the volume
+resource "null_resource" "setup_volume" {
+  depends_on = [digitalocean_droplet.battleone_droplet]
 
   provisioner "remote-exec" {
     inline = [
       # Create mount point
       "mkdir -p /mnt/battleone-data",
 
-      # Mount the volume (it should be at /dev/sda)
+      # Mount the volume
       "mount -o defaults /dev/sda /mnt/battleone-data",
 
       # Add to fstab for persistent mounting
       "echo '/dev/sda /mnt/battleone-data ext4 defaults 0 0' >> /etc/fstab",
 
-      # Create directories for data
-      "mkdir -p /mnt/battleone-data/postgres",
-      "mkdir -p /mnt/battleone-data/redis",
-      "mkdir -p /mnt/battleone-data/kratos",
+      # Create directories for services
+      "mkdir -p /mnt/battleone-data/{postgres,redis,kratos}",
 
       # Set proper permissions
-      "chown -R 999:999 /mnt/battleone-data/postgres", # postgres user in container
-      "chown -R 999:999 /mnt/battleone-data/redis",    # redis user in container
+      "chown -R 999:999 /mnt/battleone-data/postgres",
+      "chown -R 999:999 /mnt/battleone-data/redis",
       "chmod 755 /mnt/battleone-data/kratos"
     ]
 
@@ -186,80 +177,76 @@ resource "null_resource" "mount_volume" {
       type        = "ssh"
       user        = "root"
       private_key = var.ssh_private_key
-      host        = digitalocean_droplet.battleone_infrastructure.ipv4_address
+      host        = digitalocean_droplet.battleone_droplet.ipv4_address
     }
   }
 }
 
-# Deploy the infrastructure using Docker Compose
-resource "null_resource" "deploy_infrastructure" {
-  depends_on = [null_resource.mount_volume]
+# Deploy the services
+resource "null_resource" "deploy_services" {
+  depends_on = [null_resource.setup_volume]
 
   # Upload configuration files
   provisioner "file" {
-    source      = "${path.module}/docker-compose.infrastructure.yml"
-    destination = "/opt/battleone/docker-compose.infrastructure.yml"
+    source      = "${path.module}/docker-compose.yml"
+    destination = "/opt/battleone/docker-compose.yml"
 
     connection {
       type        = "ssh"
       user        = "root"
       private_key = var.ssh_private_key
-      host        = digitalocean_droplet.battleone_infrastructure.ipv4_address
+      host        = digitalocean_droplet.battleone_droplet.ipv4_address
     }
   }
 
   provisioner "file" {
-    source      = "${path.module}/ory/"
-    destination = "/opt/battleone/ory/"
+    source      = "${path.module}/kratos/"
+    destination = "/opt/battleone/kratos/"
 
     connection {
       type        = "ssh"
       user        = "root"
       private_key = var.ssh_private_key
-      host        = digitalocean_droplet.battleone_infrastructure.ipv4_address
+      host        = digitalocean_droplet.battleone_droplet.ipv4_address
     }
   }
 
-  # Deploy the infrastructure
+  # Deploy the services
   provisioner "remote-exec" {
     inline = [
       "cd /opt/battleone",
 
       # Set environment variables
       "export POSTGRES_PASSWORD='${var.postgres_password}'",
-      "export REDIS_PASSWORD='${var.redis_password}'",
-      "export POSTGRES_DB='${var.postgres_db}'",
       "export POSTGRES_USER='${var.postgres_user}'",
-      "export KRATOS_LOG_LEVEL='${var.kratos_log_level}'",
+      "export POSTGRES_DB='${var.postgres_db}'",
+      "export REDIS_PASSWORD='${var.redis_password}'",
 
-      # Deploy with Docker Compose
-      "docker compose -f docker-compose.infrastructure.yml down || true",
-      "docker compose -f docker-compose.infrastructure.yml pull",
-      "docker compose -f docker-compose.infrastructure.yml up -d",
+      # Start services
+      "docker-compose down || true",
+      "docker-compose pull",
+      "docker-compose up -d",
 
       # Wait for services to be ready
       "sleep 30",
 
       # Verify services are running
-      "docker compose -f docker-compose.infrastructure.yml ps",
-
-      # Test service health
+      "docker-compose ps",
       "docker exec battleone-postgres pg_isready -U ${var.postgres_user} -d ${var.postgres_db}",
-      "docker exec battleone-redis redis-cli ping",
-      "curl -f http://localhost:4433/health/ready"
+      "docker exec battleone-redis redis-cli ping"
     ]
 
     connection {
       type        = "ssh"
       user        = "root"
       private_key = var.ssh_private_key
-      host        = digitalocean_droplet.battleone_infrastructure.ipv4_address
+      host        = digitalocean_droplet.battleone_droplet.ipv4_address
     }
   }
 
-  # Trigger redeployment when infrastructure files change
+  # Trigger redeployment when files change
   triggers = {
-    docker_compose_hash = filemd5("${path.module}/docker-compose.infrastructure.yml")
-    kratos_config_hash  = filemd5("${path.module}/ory/kratos.yml")
+    docker_compose_hash = filemd5("${path.module}/docker-compose.yml")
+    kratos_config_hash  = filemd5("${path.module}/kratos/kratos.yml")
   }
 }

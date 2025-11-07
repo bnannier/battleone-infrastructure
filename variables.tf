@@ -1,39 +1,44 @@
-# BattleOne Infrastructure - Terraform Variables
+# Variables for BattleOne Infrastructure
 
 variable "digitalocean_token" {
-  description = "DigitalOcean API token"
+  description = "DigitalOcean API Token"
   type        = string
   sensitive   = true
 }
 
 variable "ssh_private_key" {
-  description = "SSH private key for droplet access"
+  description = "Private SSH key for droplet access"
   type        = string
   sensitive   = true
 }
 
 variable "ssh_public_key" {
-  description = "SSH public key for droplet access"
+  description = "Public SSH key for droplet access"
   type        = string
 }
 
 variable "region" {
-  description = "DigitalOcean region for resources"
+  description = "DigitalOcean region"
   type        = string
-  default     = "nyc1"
+  default     = "tor1"
 }
 
 variable "droplet_size" {
-  description = "Size of the DigitalOcean droplet"
+  description = "Droplet size"
   type        = string
-  default     = "s-2vcpu-2gb"
+  default     = "s-2vcpu-4gb"
 }
 
-# Database Configuration
 variable "postgres_password" {
-  description = "PostgreSQL database password"
+  description = "PostgreSQL password"
   type        = string
   sensitive   = true
+}
+
+variable "postgres_user" {
+  description = "PostgreSQL user"
+  type        = string
+  default     = "battleone_user"
 }
 
 variable "postgres_db" {
@@ -42,20 +47,8 @@ variable "postgres_db" {
   default     = "battleone"
 }
 
-variable "postgres_user" {
-  description = "PostgreSQL username"
-  type        = string
-  default     = "battleone_user"
-}
-
 variable "redis_password" {
-  description = "Redis cache password"
+  description = "Redis password"
   type        = string
   sensitive   = true
-}
-
-variable "kratos_log_level" {
-  description = "Kratos logging level"
-  type        = string
-  default     = "warn"
 }
