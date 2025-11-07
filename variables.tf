@@ -6,6 +6,18 @@ variable "digitalocean_token" {
   sensitive   = true
 }
 
+variable "spaces_access_key" {
+  description = "DigitalOcean Spaces Access Key"
+  type        = string
+  sensitive   = true
+}
+
+variable "spaces_secret_key" {
+  description = "DigitalOcean Spaces Secret Key"
+  type        = string
+  sensitive   = true
+}
+
 variable "ssh_private_key" {
   description = "Private SSH key for droplet access"
   type        = string

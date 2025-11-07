@@ -4,18 +4,21 @@
 terraform {
   required_version = ">= 1.0"
 
-  backend "s3" {
-    endpoint = "https://tor1.digitaloceanspaces.com"
-    bucket   = "battleone-terraform-state"
-    key      = "terraform.tfstate"
-    region   = "us-east-1" # Required for S3 compatibility, actual region is tor1
-    
-    skip_credentials_validation = true
-    skip_metadata_api_check     = true
-    skip_requesting_account_id  = true
-    skip_region_validation      = true
-    use_path_style              = false
-  }
+  # Backend will be configured after bucket creation
+  # backend "s3" {
+  #   endpoints = {
+  #     s3 = "https://tor1.digitaloceanspaces.com"
+  #   }
+  #   bucket   = "battleone-terraform-state"
+  #   key      = "terraform.tfstate"
+  #   region   = "us-east-1" # Required for S3 compatibility, actual region is tor1
+  #   
+  #   skip_credentials_validation = true
+  #   skip_metadata_api_check     = true
+  #   skip_requesting_account_id  = true
+  #   skip_region_validation      = true
+  #   use_path_style              = false
+  # }
 
   required_providers {
     digitalocean = {
@@ -31,7 +34,15 @@ terraform {
 
 # Configure the DigitalOcean Provider
 provider "digitalocean" {
-  token = var.digitalocean_token
+  token             = var.digitalocean_token
+  spaces_access_id  = var.spaces_access_key
+  spaces_secret_key = var.spaces_secret_key
+}
+
+# Create the Terraform state bucket first
+resource "digitalocean_spaces_bucket" "terraform_state" {
+  name   = "battleone-terraform-state"
+  region = "tor1"
 }
 
 # Generate random suffix for unique resource names
