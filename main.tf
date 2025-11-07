@@ -176,18 +176,22 @@ resource "null_resource" "setup_volume" {
       # Create mount point
       "mkdir -p /mnt/battleone-data",
 
-      # Mount the volume
-      "mount -o defaults /dev/sda /mnt/battleone-data",
+      # Check if volume is already mounted, if not mount it
+      "if ! mountpoint -q /mnt/battleone-data; then",
+      "  mount -o defaults /dev/sda /mnt/battleone-data",
+      "fi",
 
-      # Add to fstab for persistent mounting
-      "echo '/dev/sda /mnt/battleone-data ext4 defaults 0 0' >> /etc/fstab",
+      # Add to fstab if not already present
+      "if ! grep -q '/dev/sda /mnt/battleone-data' /etc/fstab; then",
+      "  echo '/dev/sda /mnt/battleone-data ext4 defaults 0 0' >> /etc/fstab",
+      "fi",
 
       # Create directories for services
       "mkdir -p /mnt/battleone-data/{postgres,redis,kratos}",
 
       # Set proper permissions
       "chown -R 999:999 /mnt/battleone-data/postgres",
-      "chown -R 999:999 /mnt/battleone-data/redis",
+      "chown -R 999:999 /mnt/battleone-data/redis", 
       "chmod 755 /mnt/battleone-data/kratos"
     ]
 
