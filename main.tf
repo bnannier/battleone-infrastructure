@@ -4,19 +4,20 @@
 terraform {
   required_version = ">= 1.0"
 
-  backend "s3" {
-    endpoints = {
-      s3 = "https://nyc3.digitaloceanspaces.com"
-    }
-    key                           = "terraform/battleone-infrastructure.tfstate"
-    bucket                        = "battleone-terraform-state"
-    region                        = "us-east-1"
-    skip_credentials_validation   = true
-    skip_metadata_api_check       = true
-    skip_requesting_account_id    = true
-    skip_region_validation        = true
-    use_path_style               = false
-  }
+  # Temporarily using local state - uncomment below when Spaces credentials are available
+  # backend "s3" {
+  #   endpoints = {
+  #     s3 = "https://nyc3.digitaloceanspaces.com"
+  #   }
+  #   key                           = "terraform/battleone-infrastructure.tfstate"
+  #   bucket                        = "battleone-terraform-state"
+  #   region                        = "us-east-1"
+  #   skip_credentials_validation   = true
+  #   skip_metadata_api_check       = true
+  #   skip_requesting_account_id    = true
+  #   skip_region_validation        = true
+  #   use_path_style               = false
+  # }
 
   required_providers {
     digitalocean = {
