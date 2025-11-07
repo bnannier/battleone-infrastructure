@@ -94,7 +94,7 @@ jobs:
           # Install s3cmd for DigitalOcean Spaces
           pip install s3cmd
           
-          # Configure s3cmd
+          # Configure s3cmd for DigitalOcean Spaces
           cat > ~/.s3cfg << EOF
           [default]
           access_key = ${{ secrets.SPACES_ACCESS_KEY }}
@@ -102,10 +102,31 @@ jobs:
           host_base = nyc3.digitaloceanspaces.com
           host_bucket = %(bucket)s.nyc3.digitaloceanspaces.com
           use_https = True
+          signature_v2 = False
           EOF
           
-          # Create bucket if it doesn't exist
-          s3cmd mb s3://battleone-terraform-state || echo "Bucket already exists or creation failed - continuing..."
+          # Check if bucket exists first
+          echo "🔍 Checking if bucket exists..."
+          if s3cmd ls s3://battleone-terraform-state > /dev/null 2>&1; then
+            echo "✅ Bucket already exists"
+          else
+            echo "📦 Creating new bucket..."
+            if s3cmd mb s3://battleone-terraform-state --region=nyc3; then
+              echo "✅ Bucket created successfully"
+            else
+              echo "❌ Failed to create bucket"
+              exit 1
+            fi
+          fi
+          
+          # Verify bucket is accessible
+          echo "🔍 Verifying bucket access..."
+          if s3cmd ls s3://battleone-terraform-state > /dev/null 2>&1; then
+            echo "✅ Bucket is accessible"
+          else
+            echo "❌ Bucket is not accessible"
+            exit 1
+          fi
 
       - name: Terraform Init
         run: |
