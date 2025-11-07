@@ -1,194 +1,231 @@
 # BattleOne Infrastructure
 
-This repository contains Terraform configuration to deploy the BattleOne infrastructure on DigitalOcean, including PostgreSQL, Redis, and Kratos identity management.
+This repository contains Terraform configuration to deploy the BattleOne infrastructure on DigitalOcean, including PostgreSQL, Redis, Kratos identity management, and comprehensive Datadog monitoring.
 
-## Architecture
+🚀 **Production-ready infrastructure with automated deployment, security hardening, and enterprise-grade monitoring!**
 
-- **Platform**: DigitalOcean
-- **Region**: Toronto (tor1)
-- **Services**: PostgreSQL, Redis, Kratos (Ory Identity)
-- **State Storage**: DigitalOcean Spaces
-- **Deployment**: GitHub Actions
+## 📚 Documentation
 
-## Infrastructure Components
+### Setup Guides
+- **[DigitalOcean Setup](./docs/DIGITALOCEAN_SETUP.md)** - Complete DigitalOcean account and resource configuration
+- **[GitHub Setup](./docs/GITHUB_SETUP.md)** - GitHub repository, secrets, and Actions configuration  
+- **[Datadog Monitoring](./docs/DATADOG_SETUP.md)** - Free tier monitoring setup for all services
+
+### Reference
+- **[Project State](./docs/claude-state.md)** - Development session state and progress tracking
+
+## 🏗️ Architecture
+
+- **Platform**: DigitalOcean Droplet + Spaces + VPC
+- **Region**: Toronto (tor1) - configurable
+- **Services**: PostgreSQL, Redis, Kratos, Datadog Agent
+- **State Storage**: DigitalOcean Spaces (S3-compatible)
+- **Deployment**: GitHub Actions + Terraform
+- **Monitoring**: Datadog (free tier)
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+- DigitalOcean account with payment method
+- GitHub repository with this code
+- Datadog account (free tier)
+
+### 2. Setup (15 minutes)
+1. **[Configure DigitalOcean](./docs/DIGITALOCEAN_SETUP.md)** - API keys, Spaces, SSH keys
+2. **[Configure GitHub](./docs/GITHUB_SETUP.md)** - Repository secrets, Actions
+3. **[Configure Datadog](./docs/DATADOG_SETUP.md)** - Free monitoring setup
+
+### 3. Deploy
+- Push to main branch OR manually trigger GitHub Actions
+- Infrastructure deploys automatically in ~5 minutes
+- Monitor progress in GitHub Actions tab
+
+### 4. Access
+- **SSH**: `ssh root@DROPLET_IP`
+- **Monitoring**: [Datadog Dashboard](https://app.datadoghq.com/infrastructure)
+- **Services**: All internal-only (secure by design)
+
+## 🏗️ Infrastructure Components
 
 ### Core Services
 - **PostgreSQL 15**: Primary database with persistent storage
-- **Redis 7**: Cache and session storage with authentication
+- **Redis 7**: Cache and session storage with authentication  
 - **Kratos v1.0.0**: Identity and user management system
+- **Datadog Agent**: Comprehensive monitoring and logging
 
-### Infrastructure
-- **DigitalOcean Droplet**: s-2vcpu-4gb in Toronto region
-- **Volume**: 20GB persistent storage for data
-- **VPC**: Private network (10.10.0.0/24)
-- **Firewall**: SSH (22), HTTP (80), HTTPS (443), Kratos (4433)
+### Infrastructure  
+- **DigitalOcean Droplet**: s-2vcpu-4gb (scalable)
+- **Block Storage**: 20GB persistent SSD volume
+- **VPC**: Private network (10.50.0.0/24) 
+- **Firewall**: SSH (22), HTTP (80), HTTPS (443) - All services internal-only
+- **Monitoring**: Host + container + application metrics
 
-## Prerequisites
+## 💰 Cost Breakdown
 
-### Required GitHub Secrets
+| Component | Monthly Cost | Notes |
+|-----------|--------------|--------|
+| **Droplet** (s-2vcpu-4gb) | $24.00 | Scalable compute |
+| **Block Storage** (20GB) | $2.00 | Persistent data |
+| **Spaces** (Terraform state) | $0.50 | Object storage |
+| **Datadog Monitoring** | $0.00 | Free tier |
+| **Total** | **~$26.50** | Production-ready infrastructure |
 
-Set these secrets in your GitHub repository (Settings → Secrets and variables → Actions):
+*New DigitalOcean accounts get $200 free credit (60 days)*
 
+## 🔐 Security Features
+
+- **🔒 Internal Services**: PostgreSQL, Redis, Kratos only accessible within VPC
+- **🛡️ Firewall Protection**: Minimal external ports (SSH, HTTP, HTTPS only)
+- **🔑 SSH Key Authentication**: No password authentication  
+- **📊 Monitoring**: Real-time security and performance monitoring
+- **🗂️ Encrypted Storage**: All data encrypted at rest
+- **🔄 Automated Updates**: Infrastructure as Code with version control
+
+## ⚙️ Deployment Options
+
+### Automatic (Recommended)
+- **Push to main branch** → Automatically deploys infrastructure
+- **Manual trigger** → GitHub Actions → "Deploy BattleOne Infrastructure"
+
+### Manual Commands  
 ```bash
-# DigitalOcean Configuration
-DIGITALOCEAN_ACCESS_TOKEN=dop_v1_your_digitalocean_token_here
+# Deploy infrastructure
+gh workflow run "Deploy BattleOne Infrastructure" --field action=apply
 
-# DigitalOcean Spaces (for Terraform state)
-SPACES_ACCESS_KEY=DO801XXXXXXXXXXXXX
-SPACES_SECRET_KEY=your_spaces_secret_key_here
+# Preview changes only  
+gh workflow run "Deploy BattleOne Infrastructure" --field action=plan
 
-# SSH Keys (generate with: ssh-keygen -t rsa -b 4096)
-DO_SSH_PRIVATE_KEY=-----BEGIN OPENSSH PRIVATE KEY-----
-# Your private key content here
------END OPENSSH PRIVATE KEY-----
-
-DO_SSH_PUBLIC_KEY=ssh-rsa AAAAB3NzaC1yc2EAAA... your-email@domain.com
-
-# Database Passwords
-POSTGRES_PASSWORD=your-secure-postgres-password
-REDIS_PASSWORD=your-secure-redis-password
-
-# Optional (with defaults)
-POSTGRES_DB=battleone
-POSTGRES_USER=battleone_user
+# Destroy all resources
+gh workflow run "Deploy BattleOne Infrastructure" --field action=destroy
 ```
 
-### SSH Key Generation
+## 🌐 Service Access
 
-Generate SSH keys for server access:
+After deployment, access your infrastructure:
 
-```bash
-ssh-keygen -t rsa -b 4096 -C "battleone-infrastructure"
-```
+### External Access
+- **SSH**: `ssh root@DROPLET_IP` 
+- **Monitoring**: [Datadog Dashboard](https://app.datadoghq.com/infrastructure)
 
-- Copy the **private key** content to `DO_SSH_PRIVATE_KEY` secret
-- Copy the **public key** content to `DO_SSH_PUBLIC_KEY` secret
+### Internal Services (VPC only)
+All database and API services are secure and only accessible from within the VPC:
+- **PostgreSQL**: `postgresql://battleone_user:PASSWORD@10.50.0.2:5432/battleone`
+- **Redis**: `redis://:PASSWORD@10.50.0.2:6379`  
+- **Kratos Public**: `http://10.50.0.2:4433`
+- **Kratos Admin**: `http://10.50.0.2:4434`
 
-## Deployment
+For admin access, use SSH tunneling as documented in the setup guides.
 
-### Automatic Deployment
+## 🧪 Local Development
 
-The infrastructure automatically deploys when:
-
-1. **Push to main branch** - Automatically applies changes
-2. **Manual trigger** - Use GitHub Actions workflow dispatch
-
-### Manual Deployment Options
-
-Go to **Actions** → **Deploy BattleOne Infrastructure** → **Run workflow**
-
-Choose from:
-- **apply**: Deploy/update infrastructure
-- **plan**: Preview changes
-- **destroy**: Remove all infrastructure
-
-## Terraform State
-
-- **Backend**: DigitalOcean Spaces
-- **Bucket**: `battleone-terraform-state`
-- **Region**: Toronto (tor1)
-- **Key**: `terraform.tfstate`
-
-## Service Access
-
-After deployment, you'll receive:
-
-### Public Access
-- **Kratos API**: `http://DROPLET_IP:4433`
-- **SSH**: `ssh root@DROPLET_IP`
-
-### Internal Services
-- **PostgreSQL**: `postgresql://battleone_user:PASSWORD@localhost:5432/battleone`
-- **Redis**: `redis://:PASSWORD@localhost:6379`
-- **Kratos Admin**: `http://localhost:4434`
-
-## Local Development
+For local Terraform development and testing:
 
 ### Prerequisites
 - Terraform >= 1.6
-- DigitalOcean CLI (doctl)
+- DigitalOcean CLI (`doctl`)
+- Valid DigitalOcean account with API access
 
-### Setup Environment
-
+### Quick Setup
 ```bash
-# Set Spaces credentials for Terraform state
-export AWS_ACCESS_KEY_ID=DO801ADJ22JYLHKHJK9V
-export AWS_SECRET_ACCESS_KEY=IjdU3WVcForYivTkuiLqrjvr9W22mGudBHVwfYHJS5k
+# Install doctl and authenticate
+curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
+sudo mv doctl /usr/local/bin
+doctl auth init
 
-# Copy and customize variables
+# Copy example configuration
 cp terraform.tfvars.example terraform.tfvars
-```
 
-### Deploy Locally
-
-```bash
+# Initialize and plan
 terraform init
 terraform plan
-terraform apply
 ```
 
-## File Structure
+**⚠️ Note**: For production deployment, use GitHub Actions as documented in the setup guides.
+
+## 📁 Project Structure
 
 ```
-.
-├── main.tf                     # Main Terraform configuration
-├── variables.tf                # Input variables
-├── outputs.tf                  # Output values
-├── terraform.tfvars.example    # Example configuration
-├── cloud-init.yml             # Droplet initialization script
-├── docker-compose.yml         # Services configuration
-├── kratos/
-│   ├── kratos.yml             # Kratos configuration
-│   └── identity.schema.json   # Identity schema
-└── .github/workflows/
-    └── terraform-deploy.yml   # GitHub Actions deployment
+battleone-infrastructure/
+├── 📋 README.md                # This file
+├── 📋 terraform.tfvars.example # Example configuration
+├── 🏗️  main.tf                # Main Terraform configuration  
+├── 🔧 variables.tf            # Input variables
+├── 📤 outputs.tf              # Output values
+├── ☁️  cloud-init.yml         # Server initialization
+├── 🐳 docker-compose.yml      # Service orchestration
+├── 📊 datadog/                # Monitoring configuration
+│   ├── datadog.yaml          # Agent configuration
+│   └── conf.d/               # Service integrations
+├── 🔐 kratos/                 # Identity management
+│   ├── kratos.yml            # Kratos configuration
+│   └── identity.schema.json  # User schema
+├── 🗃️  postgres/              # Database setup
+│   └── init-datadog-user.sql # Monitoring user
+├── 📚 docs/                   # Complete documentation
+│   ├── DIGITALOCEAN_SETUP.md # DO account setup
+│   ├── GITHUB_SETUP.md       # GitHub Actions setup  
+│   ├── DATADOG_SETUP.md      # Free monitoring setup
+│   └── claude-state.md       # Project status
+└── ⚙️  .github/workflows/     # CI/CD automation
+    └── terraform-deploy.yml  # Deployment pipeline
 ```
 
-## Health Monitoring
+## 🩺 Health & Monitoring
 
-The deployment includes health checks for:
+### Automated Health Checks
+The deployment includes comprehensive monitoring:
+- ✅ **Host metrics**: CPU, memory, disk, network via Datadog
+- ✅ **Container health**: All Docker services monitored
+- ✅ **Database connectivity**: PostgreSQL connection and performance
+- ✅ **Cache performance**: Redis metrics and memory usage  
+- ✅ **API endpoints**: Kratos health monitoring
+- ✅ **Log aggregation**: Centralized logging from all services
 
-- ✅ Kratos API endpoint
-- ✅ PostgreSQL connectivity
-- ✅ Redis connectivity
-- ✅ Docker container status
-
-## Security Notes
-
-- SSH access is restricted by firewall rules
-- Database passwords are managed via GitHub secrets
-- Kratos uses secure session management
-- All data persisted on encrypted volumes
-
-## Troubleshooting
-
-### Check Service Status
-
+### Manual Service Checks
 ```bash
+# SSH to server and check status
 ssh root@DROPLET_IP
 cd /opt/battleone
 docker-compose ps
-docker-compose logs
+docker-compose logs [service_name]
+
+# Check individual services
+docker-compose logs postgres
+docker-compose logs redis  
+docker-compose logs kratos
+docker-compose logs datadog-agent
 ```
 
-### Verify Health
+### Monitoring Dashboard
+Access your **free** Datadog dashboard at [app.datadoghq.com/infrastructure](https://app.datadoghq.com/infrastructure)
 
+## 🚨 Troubleshooting
+
+Common issues and solutions:
+
+### Deployment Failures
+1. **Check GitHub Actions logs** in repository Actions tab
+2. **Verify secrets** - ensure all 8 required secrets are set
+3. **Check DigitalOcean billing** - payment method required
+
+### Service Issues
 ```bash
-curl http://DROPLET_IP:4433/health/ready
-```
-
-### Reset Services
-
-```bash
+# Reset all services
 ssh root@DROPLET_IP
 cd /opt/battleone
 docker-compose restart
+
+# Check specific service logs
+docker-compose logs -f [service_name]
+
+# Verify network connectivity
+ping 10.50.0.2
 ```
 
-## Support
+### Need Help?
+1. **📋 Documentation**: Check the comprehensive guides in `docs/`
+2. **🐙 GitHub Issues**: Review Actions logs and error messages  
+3. **☁️ DigitalOcean**: Verify account status and resource limits
+4. **📊 Datadog**: Monitor service health and performance metrics
 
-For issues or questions about the infrastructure deployment, check:
-
-1. GitHub Actions logs for deployment errors
-2. Service logs via SSH access
-3. Terraform state in DigitalOcean Spaces
+For detailed troubleshooting, see the setup guides in the `docs/` folder.
