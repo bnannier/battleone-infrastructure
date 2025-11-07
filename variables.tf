@@ -64,3 +64,15 @@ variable "redis_password" {
   type        = string
   sensitive   = true
 }
+
+variable "datadog_api_key" {
+  description = "Datadog API Key for monitoring"
+  type        = string
+  sensitive   = true
+}
+
+variable "datadog_site" {
+  description = "Datadog site (datadoghq.com, datadoghq.eu, etc.)"
+  type        = string
+  default     = "datadoghq.com"
+}

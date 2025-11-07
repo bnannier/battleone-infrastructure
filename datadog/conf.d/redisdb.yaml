@@ -1,0 +1,16 @@
+init_config:
+
+instances:
+  - host: redis
+    port: 6379
+    password: ${REDIS_PASSWORD}
+    tags:
+      - service:battleone-redis
+      - environment:production
+    
+    # Additional Redis monitoring options
+    command_stats: true
+    
+    # Custom commands to monitor (optional)
+    # keys:
+    #   - battleone:*

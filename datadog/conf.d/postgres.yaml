@@ -1,0 +1,28 @@
+init_config:
+
+instances:
+  - host: postgres
+    port: 5432
+    username: datadog
+    password: secure_datadog_monitor_2023
+    dbname: battleone
+    tags:
+      - service:battleone-postgres
+      - environment:production
+    
+    # Collect additional metrics
+    collect_function_metrics: true
+    collect_count_metrics: true
+    collect_activity_metrics: true
+    collect_database_size_metrics: true
+    collect_default_database: true
+    
+    # Custom queries for application-specific metrics
+    custom_queries:
+      - metric_prefix: battleone.postgres
+        query: 'SELECT COUNT(*) as active_connections FROM pg_stat_activity WHERE state = ''active'';'
+        columns:
+          - name: active_connections
+            type: gauge
+        tags:
+          - query_type:active_connections

@@ -1,0 +1,22 @@
+init_config:
+
+instances:
+  # Kratos Public API Health Check
+  - name: battleone-kratos-public
+    url: http://kratos:4433/health/ready
+    timeout: 10
+    method: GET
+    tags:
+      - service:battleone-kratos
+      - api_type:public
+      - environment:production
+    
+  # Kratos Admin API Health Check  
+  - name: battleone-kratos-admin
+    url: http://kratos:4434/admin/health/ready
+    timeout: 10
+    method: GET
+    tags:
+      - service:battleone-kratos
+      - api_type:admin
+      - environment:production

@@ -297,6 +297,8 @@ resource "null_resource" "deploy_services" {
     inline = [
       "echo 'Creating deployment directories...'",
       "mkdir -p /opt/battleone/kratos",
+      "mkdir -p /opt/battleone/datadog/conf.d",
+      "mkdir -p /opt/battleone/postgres",
       "echo 'Deployment directories created'"
     ]
 
@@ -333,6 +335,30 @@ resource "null_resource" "deploy_services" {
     }
   }
 
+  provisioner "file" {
+    source      = "${path.module}/datadog/"
+    destination = "/opt/battleone/datadog/"
+
+    connection {
+      type        = "ssh"
+      user        = "root"
+      private_key = var.ssh_private_key
+      host        = digitalocean_droplet.battleone_droplet.ipv4_address
+    }
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/postgres/"
+    destination = "/opt/battleone/postgres/"
+
+    connection {
+      type        = "ssh"
+      user        = "root"
+      private_key = var.ssh_private_key
+      host        = digitalocean_droplet.battleone_droplet.ipv4_address
+    }
+  }
+
   # Deploy the services
   provisioner "remote-exec" {
     inline = [
@@ -356,6 +382,8 @@ resource "null_resource" "deploy_services" {
       "POSTGRES_USER=${var.postgres_user}",
       "POSTGRES_DB=${var.postgres_db}",
       "REDIS_PASSWORD=${var.redis_password}",
+      "DATADOG_API_KEY=${var.datadog_api_key}",
+      "DATADOG_SITE=${var.datadog_site}",
       "EOF",
       "echo 'Environment file created'",
 

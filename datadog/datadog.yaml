@@ -1,0 +1,45 @@
+# Datadog Agent Configuration for BattleOne Infrastructure
+
+# API Key is set via environment variable DD_API_KEY
+# Site is set via environment variable DD_SITE
+
+# Hostname
+hostname: battleone-droplet
+
+# Tags applied to all metrics
+tags:
+  - environment:production
+  - service:battleone
+  - version:1.0.0
+  - infrastructure:digitalocean
+
+# Logging configuration
+logs_enabled: true
+log_level: INFO
+
+# Container monitoring
+container_collect_all: true
+docker_labels_as_tags:
+  env: environment
+  service: service
+  version: version
+
+# Process monitoring
+process_agent_enabled: true
+
+# Network monitoring
+system_probe_enabled: true
+
+# APM (Application Performance Monitoring)
+apm_config:
+  enabled: true
+  receiver_port: 8126
+
+# JMX monitoring (if needed for future Java services)
+jmx_check_period: 15000
+
+# Autodiscovery
+ad_config_poll_interval: 10
+
+# Health check
+health_port: 5555

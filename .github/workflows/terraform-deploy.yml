@@ -41,6 +41,10 @@ env:
   TF_VAR_postgres_db: ${{ secrets.POSTGRES_DB || 'battleone' }}
   TF_VAR_postgres_user: ${{ secrets.POSTGRES_USER || 'battleone_user' }}
   
+  # Datadog Configuration
+  TF_VAR_datadog_api_key: ${{ secrets.DATADOG_API_KEY }}
+  TF_VAR_datadog_site: ${{ secrets.DATADOG_SITE || 'datadoghq.com' }}
+  
   # Infrastructure Settings
   TF_VAR_region: "tor1"
   TF_VAR_droplet_size: "s-2vcpu-4gb"
@@ -94,6 +98,12 @@ jobs:
           fi
           if [ -z "${{ secrets.REDIS_PASSWORD }}" ]; then
             echo "❌ REDIS_PASSWORD secret is missing"
+            exit 1
+          fi
+          
+          # Check Datadog secrets
+          if [ -z "${{ secrets.DATADOG_API_KEY }}" ]; then
+            echo "❌ DATADOG_API_KEY secret is missing"
             exit 1
           fi
           

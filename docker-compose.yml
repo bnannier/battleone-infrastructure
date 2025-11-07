@@ -10,6 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - /mnt/battleone-data/postgres:/var/lib/postgresql/data
+      - ./postgres:/docker-entrypoint-initdb.d
     networks:
       - battleone-network
     restart: unless-stopped
@@ -18,6 +19,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      com.datadoghq.ad.check_names: '["postgres"]'
+      com.datadoghq.ad.init_configs: '[{}]'
+      com.datadoghq.ad.instances: '[{"host":"%%host%%","port":"5432","username":"datadog","password":"secure_datadog_monitor_2023","dbname":"battleone","tags":["service:battleone-postgres"]}]'
+      com.datadoghq.ad.logs: '[{"source":"postgres","service":"battleone-postgres"}]'
 
   redis:
     image: redis:7-alpine
@@ -33,6 +39,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      com.datadoghq.ad.check_names: '["redisdb"]'
+      com.datadoghq.ad.init_configs: '[{}]'
+      com.datadoghq.ad.instances: '[{"host":"%%host%%","port":"6379","password":"${REDIS_PASSWORD}","tags":["service:battleone-redis"]}]'
+      com.datadoghq.ad.logs: '[{"source":"redis","service":"battleone-redis"}]'
 
   kratos-migrate:
     image: oryd/kratos:v1.0.0
@@ -74,6 +85,44 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      com.datadoghq.ad.check_names: '["http_check"]'
+      com.datadoghq.ad.init_configs: '[{}]'
+      com.datadoghq.ad.instances: '[{"name":"battleone-kratos-health","url":"http://%%host%%:4433/health/ready","timeout":10,"tags":["service:battleone-kratos"]}]'
+      com.datadoghq.ad.logs: '[{"source":"kratos","service":"battleone-kratos"}]'
+
+  # Datadog Agent for monitoring
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:7
+    container_name: battleone-datadog-agent
+    environment:
+      - DD_API_KEY=${DATADOG_API_KEY}
+      - DD_SITE=${DATADOG_SITE:-datadoghq.com}
+      - DD_HOSTNAME=battleone-droplet
+      - DD_TAGS=environment:production,service:battleone,version:1.0.0
+      - DD_AC_EXCLUDE=name:battleone-datadog-agent  # Don't monitor itself
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_CONTAINER_EXCLUDE=name:battleone-datadog-agent
+      - DD_DOCKER_LABELS_AS_TAGS=true
+      - DD_PROCESS_AGENT_ENABLED=true
+      - DD_SYSTEM_PROBE_ENABLED=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+      - /opt/datadog-agent/run:/opt/datadog-agent/run:rw
+      - /etc/datadog-agent/:/etc/datadog-agent/
+      - ./datadog/conf.d/:/etc/datadog-agent/conf.d/
+    networks:
+      - battleone-network
+    restart: unless-stopped
+    privileged: true
+    pid: host
+    labels:
+      com.datadoghq.ad.check_names: '["docker"]'
+      com.datadoghq.ad.init_configs: '[{}]'
+      com.datadoghq.ad.instances: '[{"docker_root":"/","container_whitelist":[]}]'
 
 networks:
   battleone-network:
