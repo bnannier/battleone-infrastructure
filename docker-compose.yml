@@ -51,9 +51,9 @@ services:
   kratos:
     image: oryd/kratos:v1.0.0
     container_name: battleone-kratos
-    ports:
-      - "4433:4433" # public
-      - "4434:4434" # admin
+    # No external ports exposed - Kratos is only accessible internally
+    # The BFF will communicate with Kratos via the internal network on port 4433
+    # Admin API (4434) also internal only
     environment:
       - DSN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable&max_conns=20&max_idle_conns=4
       - LOG_LEVEL=info

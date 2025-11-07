@@ -22,9 +22,9 @@ output "redis_connection_string" {
   sensitive   = true
 }
 
-output "kratos_public_url" {
-  description = "Kratos public API URL"
-  value       = "http://${digitalocean_droplet.battleone_droplet.ipv4_address}:4433"
+output "kratos_internal_url" {
+  description = "Kratos internal API URL (accessible only from within the droplet)"
+  value       = "http://${digitalocean_droplet.battleone_droplet.ipv4_address_private}:4433"
 }
 
 output "kratos_admin_url" {

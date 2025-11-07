@@ -93,12 +93,8 @@ resource "digitalocean_firewall" "battleone_firewall" {
     source_addresses = ["0.0.0.0/0", "::/0"]
   }
 
-  # Kratos public API
-  inbound_rule {
-    protocol         = "tcp"
-    port_range       = "4433"
-    source_addresses = ["0.0.0.0/0", "::/0"]
-  }
+  # Note: Kratos API (4433) is only accessible internally
+  # The BFF will communicate with Kratos through the internal network
 
   # Allow all outbound traffic
   outbound_rule {
