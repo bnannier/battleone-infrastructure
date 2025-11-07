@@ -173,26 +173,114 @@ resource "null_resource" "setup_volume" {
 
   provisioner "remote-exec" {
     inline = [
+      # Wait for system to be ready
+      "echo 'Waiting for system to be ready...'",
+      "sleep 10",
+      
+      # Show available disks and current mounts
+      "echo '=== System Information ==='",
+      "echo 'Available block devices:'",
+      "lsblk",
+      "echo 'Current mounts:'",
+      "mount | grep -E '(sda|battleone)' || echo 'No relevant mounts found'",
+      "echo 'Disk usage:'",
+      "df -h",
+      
       # Create mount point
+      "echo '=== Creating mount point ==='",
       "mkdir -p /mnt/battleone-data",
+      "echo 'Mount point created'",
 
-      # Check if volume is already mounted, if not mount it
+      # Check if volume is already formatted and mount it
+      "echo '=== Mounting volume ==='",
       "if ! mountpoint -q /mnt/battleone-data; then",
-      "  mount -o defaults /dev/sda /mnt/battleone-data",
+      "  echo 'Volume not mounted, attempting to mount /dev/sda...'",
+      "  if mount -o defaults /dev/sda /mnt/battleone-data; then",
+      "    echo 'Successfully mounted /dev/sda to /mnt/battleone-data'",
+      "  else",
+      "    echo 'Failed to mount /dev/sda, checking if volume needs to be formatted'",
+      "    if file -s /dev/sda | grep -q 'ext4'; then",
+      "      echo 'Volume has ext4 filesystem'",
+      "    else",
+      "      echo 'Volume does not have filesystem, creating ext4...'",
+      "      mkfs.ext4 -F /dev/sda",
+      "      echo 'Filesystem created, mounting...'",
+      "      mount -o defaults /dev/sda /mnt/battleone-data",
+      "    fi",
+      "  fi",
+      "else",
+      "  echo 'Volume already mounted'",
+      "fi",
+
+      # Verify mount is working
+      "echo '=== Verifying mount ==='",
+      "if mountpoint -q /mnt/battleone-data; then",
+      "  echo 'Mount point is active'",
+      "  echo 'Mount point contents:'",
+      "  ls -la /mnt/battleone-data/ || echo 'Cannot list contents'",
+      "  echo 'Mount point disk usage:'",
+      "  df -h /mnt/battleone-data",
+      "else",
+      "  echo 'ERROR: Mount point is not active'",
+      "  exit 1",
       "fi",
 
       # Add to fstab if not already present
+      "echo '=== Updating fstab ==='",
       "if ! grep -q '/dev/sda /mnt/battleone-data' /etc/fstab; then",
       "  echo '/dev/sda /mnt/battleone-data ext4 defaults 0 0' >> /etc/fstab",
+      "  echo 'Added to fstab'",
+      "else",
+      "  echo 'Already in fstab'",
       "fi",
 
       # Create directories for services
-      "mkdir -p /mnt/battleone-data/{postgres,redis,kratos}",
+      "echo '=== Creating service directories ==='",
+      "mkdir -p /mnt/battleone-data/postgres",
+      "mkdir -p /mnt/battleone-data/redis", 
+      "mkdir -p /mnt/battleone-data/kratos",
+      "echo 'Service directories created'",
 
-      # Set proper permissions
-      "chown -R 999:999 /mnt/battleone-data/postgres",
-      "chown -R 999:999 /mnt/battleone-data/redis", 
-      "chmod 755 /mnt/battleone-data/kratos"
+      # Verify directories were created
+      "echo '=== Verifying directories ==='",
+      "if ls -la /mnt/battleone-data/; then",
+      "  echo 'Directory listing successful'",
+      "else",
+      "  echo 'ERROR: Cannot list directories'",
+      "  exit 1",
+      "fi",
+
+      # Set proper permissions with error checking
+      "echo '=== Setting permissions ==='",
+      "if [ -d '/mnt/battleone-data/postgres' ]; then",
+      "  chown -R 999:999 /mnt/battleone-data/postgres",
+      "  echo 'PostgreSQL permissions set'",
+      "else",
+      "  echo 'ERROR: PostgreSQL directory not found'",
+      "  exit 1",
+      "fi",
+      
+      "if [ -d '/mnt/battleone-data/redis' ]; then",
+      "  chown -R 999:999 /mnt/battleone-data/redis",
+      "  echo 'Redis permissions set'",
+      "else",
+      "  echo 'ERROR: Redis directory not found'",
+      "  exit 1",
+      "fi",
+      
+      "if [ -d '/mnt/battleone-data/kratos' ]; then",
+      "  chmod 755 /mnt/battleone-data/kratos",
+      "  echo 'Kratos permissions set'",
+      "else",
+      "  echo 'ERROR: Kratos directory not found'",
+      "  exit 1",
+      "fi",
+      
+      "echo '=== Volume setup complete ==='",
+      "echo 'Final directory listing:'",
+      "ls -la /mnt/battleone-data/",
+      "echo 'Final disk usage:'",
+      "df -h /mnt/battleone-data"
     ]
 
     connection {
