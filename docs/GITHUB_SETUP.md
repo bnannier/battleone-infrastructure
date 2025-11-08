@@ -12,7 +12,7 @@ This guide covers the complete GitHub repository setup for automated deployment 
 - [ ] SSH key pair for server access
 
 ### ✅ **Required Secrets (8 total)**
-- [ ] `DIGITALOCEAN_ACCESS_TOKEN` - DigitalOcean API access
+- [ ] `DO_USER_ACCESS_TOKEN` - DigitalOcean API access
 - [ ] `DO_SPACES_ACCESS_KEY` - DigitalOcean Spaces access key  
 - [ ] `DO_SPACES_SECRET_KEY` - DigitalOcean Spaces secret key
 - [ ] `DO_SSH_PRIVATE_KEY` - SSH private key for server access
@@ -47,7 +47,7 @@ git push -u origin main
    - **Scopes**: Full Access (Read & Write)
    - **Expiration**: No Expiry (or set to your preference)
 3. **Copy the token** (starts with `dop_v1_...`)
-4. **Save as GitHub Secret**: `DIGITALOCEAN_ACCESS_TOKEN`
+4. **Save as GitHub Secret**: `DO_USER_ACCESS_TOKEN`
 
 #### **2.2 Spaces Access Keys**
 1. **Go to** [Spaces Keys](https://cloud.digitalocean.com/account/api/spaces)
@@ -122,7 +122,7 @@ If using EU region, also add:
 
 | Secret Name | Description | Example Source |
 |-------------|-------------|----------------|
-| `DIGITALOCEAN_ACCESS_TOKEN` | DigitalOcean API token | `dop_v1_abc123...` |
+| `DO_USER_ACCESS_TOKEN` | DigitalOcean API token | `dop_v1_abc123...` |
 | `DO_SPACES_ACCESS_KEY` | Spaces access key | `DO801ADJ22JY...` |
 | `DO_SPACES_SECRET_KEY` | Spaces secret key | `IjdU3WVc...` |
 | `DO_SSH_PRIVATE_KEY` | Private SSH key | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
@@ -215,7 +215,7 @@ gh run watch
 
 #### **Secret Validation Failed**
 ```
-❌ DIGITALOCEAN_ACCESS_TOKEN secret is missing
+❌ DO_USER_ACCESS_TOKEN secret is missing
 ```
 **Solution**: Check that all 8 required secrets are added with exact names
 

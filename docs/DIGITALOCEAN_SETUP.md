@@ -45,7 +45,7 @@ This guide covers the complete DigitalOcean account setup and configuration requ
    - **Expiration**: No Expiry (or set to your security preference)
 3. **Copy the token immediately** (starts with `dop_v1_...`)
    - ⚠️ **Important**: Token is only shown once!
-   - Store securely - this goes in GitHub secrets as `DIGITALOCEAN_ACCESS_TOKEN`
+   - Store securely - this goes in GitHub secrets as `DO_USER_ACCESS_TOKEN`
 
 #### **2.2 Token Security Best Practices**
 - ✅ **Use descriptive names** for easy identification
