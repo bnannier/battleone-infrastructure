@@ -11,6 +11,13 @@ packages:
   - unzip
   - jq
 
+# Add additional SSH keys for access
+ssh_authorized_keys:
+  - ${ssh_public_key}
+  %{ if laptop_ssh_public_key != "" ~}
+  - ${laptop_ssh_public_key}
+  %{ endif ~}
+
 # Create directories
 runcmd:
   # Create application directory

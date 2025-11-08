@@ -141,10 +141,12 @@ resource "digitalocean_droplet" "battleone_droplet" {
 
   # Cloud-init script to set up the environment
   user_data = templatefile("${path.module}/cloud-init.yml", {
-    postgres_password = var.postgres_password
-    postgres_user     = var.postgres_user
-    postgres_db       = var.postgres_db
-    redis_password    = var.redis_password
+    postgres_password      = var.postgres_password
+    postgres_user          = var.postgres_user
+    postgres_db            = var.postgres_db
+    redis_password         = var.redis_password
+    ssh_public_key         = var.ssh_public_key
+    laptop_ssh_public_key  = var.laptop_ssh_public_key
   })
 
   # Wait for droplet to be ready

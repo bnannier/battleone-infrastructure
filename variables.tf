@@ -29,6 +29,12 @@ variable "ssh_public_key" {
   type        = string
 }
 
+variable "laptop_ssh_public_key" {
+  description = "Laptop SSH public key for additional access"
+  type        = string
+  default     = ""
+}
+
 variable "region" {
   description = "DigitalOcean region"
   type        = string
