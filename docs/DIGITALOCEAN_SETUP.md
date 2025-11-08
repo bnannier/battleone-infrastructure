@@ -72,8 +72,8 @@ DigitalOcean Spaces provides S3-compatible object storage for Terraform state:
 2. **Generate New Key**:
    - **Name**: `battleone-terraform-state-key`
 3. **Copy both values**:
-   - **Access Key ID** (like `DO801ADJ22JY...`) → Save as `SPACES_ACCESS_KEY`
-   - **Secret Access Key** (like `IjdU3WVc...`) → Save as `SPACES_SECRET_KEY`
+   - **Access Key ID** (like `DO801ADJ22JY...`) → Save as `DO_SPACES_ACCESS_KEY`
+   - **Secret Access Key** (like `IjdU3WVc...`) → Save as `DO_SPACES_SECRET_KEY`
 
 #### **3.3 Spaces Configuration Details**
 
@@ -298,8 +298,8 @@ doctl account get
 Verify Spaces configuration:
 ```bash
 # Using AWS CLI (S3 compatible)
-aws configure set aws_access_key_id YOUR_SPACES_ACCESS_KEY
-aws configure set aws_secret_access_key YOUR_SPACES_SECRET_KEY
+aws configure set aws_access_key_id YOUR_DO_SPACES_ACCESS_KEY
+aws configure set aws_secret_access_key YOUR_DO_SPACES_SECRET_KEY
 aws configure set default.region nyc3
 
 # Test access

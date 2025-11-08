@@ -13,8 +13,8 @@ This guide covers the complete GitHub repository setup for automated deployment 
 
 ### ✅ **Required Secrets (8 total)**
 - [ ] `DIGITALOCEAN_ACCESS_TOKEN` - DigitalOcean API access
-- [ ] `SPACES_ACCESS_KEY` - DigitalOcean Spaces access key  
-- [ ] `SPACES_SECRET_KEY` - DigitalOcean Spaces secret key
+- [ ] `DO_SPACES_ACCESS_KEY` - DigitalOcean Spaces access key  
+- [ ] `DO_SPACES_SECRET_KEY` - DigitalOcean Spaces secret key
 - [ ] `DO_SSH_PRIVATE_KEY` - SSH private key for server access
 - [ ] `DO_SSH_PUBLIC_KEY` - SSH public key for server access
 - [ ] `POSTGRES_PASSWORD` - Database password
@@ -54,8 +54,8 @@ git push -u origin main
 2. **Generate New Key**:
    - **Name**: `battleone-terraform-state-key`  
 3. **Copy both values**:
-   - **Access Key** (like `DO801ADJ22JY...`) → Save as `SPACES_ACCESS_KEY`
-   - **Secret Key** (like `IjdU3WVc...`) → Save as `SPACES_SECRET_KEY`
+   - **Access Key** (like `DO801ADJ22JY...`) → Save as `DO_SPACES_ACCESS_KEY`
+   - **Secret Key** (like `IjdU3WVc...`) → Save as `DO_SPACES_SECRET_KEY`
 
 #### **2.3 SSH Key Pair**
 Generate SSH keys for server access:
@@ -123,8 +123,8 @@ If using EU region, also add:
 | Secret Name | Description | Example Source |
 |-------------|-------------|----------------|
 | `DIGITALOCEAN_ACCESS_TOKEN` | DigitalOcean API token | `dop_v1_abc123...` |
-| `SPACES_ACCESS_KEY` | Spaces access key | `DO801ADJ22JY...` |
-| `SPACES_SECRET_KEY` | Spaces secret key | `IjdU3WVc...` |
+| `DO_SPACES_ACCESS_KEY` | Spaces access key | `DO801ADJ22JY...` |
+| `DO_SPACES_SECRET_KEY` | Spaces secret key | `IjdU3WVc...` |
 | `DO_SSH_PRIVATE_KEY` | Private SSH key | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `DO_SSH_PUBLIC_KEY` | Public SSH key | `ssh-ed25519 AAAAC3...` |
 | `POSTGRES_PASSWORD` | Database password | Generated with `openssl rand -base64 32` |
@@ -223,7 +223,7 @@ gh run watch
 ```
 Error: Failed to configure the backend "s3"
 ```
-**Solution**: Verify `SPACES_ACCESS_KEY` and `SPACES_SECRET_KEY` are correct
+**Solution**: Verify `DO_SPACES_ACCESS_KEY` and `DO_SPACES_SECRET_KEY` are correct
 
 #### **SSH Connection Failed**
 ```

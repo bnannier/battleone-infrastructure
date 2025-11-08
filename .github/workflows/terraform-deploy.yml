@@ -30,8 +30,8 @@ on:
 env:
   # DigitalOcean Configuration
   TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-  TF_VAR_spaces_access_key: ${{ secrets.SPACES_ACCESS_KEY }}
-  TF_VAR_spaces_secret_key: ${{ secrets.SPACES_SECRET_KEY }}
+  TF_VAR_spaces_access_key: ${{ secrets.DO_SPACES_ACCESS_KEY }}
+  TF_VAR_spaces_secret_key: ${{ secrets.DO_SPACES_SECRET_KEY }}
   TF_VAR_ssh_private_key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
   TF_VAR_ssh_public_key: ${{ secrets.DO_SSH_PUBLIC_KEY }}
   TF_VAR_laptop_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
@@ -51,8 +51,8 @@ env:
   TF_VAR_droplet_size: "s-2vcpu-4gb"
   
   # DigitalOcean Spaces for Terraform State
-  AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_KEY }}
 
 jobs:
   terraform:
@@ -73,12 +73,12 @@ jobs:
           fi
           
           # Check DigitalOcean Spaces secrets
-          if [ -z "${{ secrets.SPACES_ACCESS_KEY }}" ]; then
-            echo "❌ SPACES_ACCESS_KEY secret is missing"
+          if [ -z "${{ secrets.DO_SPACES_ACCESS_KEY }}" ]; then
+            echo "❌ DO_SPACES_ACCESS_KEY secret is missing"
             exit 1
           fi
-          if [ -z "${{ secrets.SPACES_SECRET_KEY }}" ]; then
-            echo "❌ SPACES_SECRET_KEY secret is missing"
+          if [ -z "${{ secrets.DO_SPACES_SECRET_KEY }}" ]; then
+            echo "❌ DO_SPACES_SECRET_KEY secret is missing"
             exit 1
           fi
           
