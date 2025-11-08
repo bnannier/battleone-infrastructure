@@ -16,7 +16,7 @@ This guide covers the complete GitHub repository setup for automated deployment 
 - [ ] `DO_SPACES_ACCESS_KEY` - DigitalOcean Spaces access key  
 - [ ] `DO_SPACES_SECRET_KEY` - DigitalOcean Spaces secret key
 - [ ] `DO_SSH_PRIVATE_KEY` - SSH private key for server access
-- [ ] `DO_SSH_PUBLIC_KEY` - SSH public key for server access
+- [ ] `DO_SSH_PUBLIC_KEY` - SSH public key (used for both deployment and your laptop access)
 - [ ] `POSTGRES_PASSWORD` - Database password
 - [ ] `REDIS_PASSWORD` - Cache password  
 - [ ] `DATADOG_API_KEY` - Monitoring API key
@@ -71,7 +71,7 @@ cat ~/.ssh/battleone_key
 ```
 
 Save the keys:
-- **Public key content** → `DO_SSH_PUBLIC_KEY`
+- **Public key content** → `DO_SSH_PUBLIC_KEY` (will be used for both deployment and your laptop access)
 - **Private key content** → `DO_SSH_PRIVATE_KEY`
 
 ### 3. Database & Security Setup
