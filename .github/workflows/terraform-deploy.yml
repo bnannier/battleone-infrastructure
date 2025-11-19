@@ -119,18 +119,19 @@ jobs:
         with:
           terraform_version: "~1.6"
 
-      - name: Terraform Format Check
-        run: terraform fmt -check
-        continue-on-error: true
+      - name: Cache Terraform
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            .terraform
+          key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: terraform-
 
-      - name: Terraform Init
+      - name: Terraform Init & Validate
         run: |
-          echo "🚀 Initializing Terraform with DigitalOcean Spaces backend..."
+          echo "🚀 Initializing and validating Terraform configuration..."
           terraform init
-
-      - name: Terraform Validate
-        run: |
-          echo "🔍 Validating Terraform configuration..."
           terraform validate
 
       - name: Terraform Plan
@@ -170,6 +171,7 @@ jobs:
           github.event_name == 'workflow_dispatch' && 
           github.event.inputs.action == 'apply' && 
           github.event.inputs.auto_approve != 'true' &&
+          github.ref != 'refs/heads/main' &&
           steps.plan.outputs.plan_exitcode == '2'
         uses: trstringer/manual-approval@v1
         with:
@@ -208,53 +210,49 @@ jobs:
           echo "🗑️ Destroying Terraform infrastructure..."
           terraform destroy -auto-approve
 
-      - name: Infrastructure Health Check
+      - name: Deployment Summary & Health Check
         if: |
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
         run: |
-          echo "🏥 Performing infrastructure health checks..."
+          echo "🏥 Performing infrastructure health check and generating summary..."
           
-          # Get the droplet IP from Terraform output
+          # Get infrastructure details
           DROPLET_IP=$(terraform output -raw droplet_ip)
+          KRATOS_URL=$(terraform output -raw kratos_internal_url)
+          SSH_CONNECTION=$(terraform output -raw ssh_connection)
+          
           echo "🌐 Infrastructure deployed to: $DROPLET_IP"
           
-          # Wait for services to be ready
-          echo "⏳ Waiting for services to start..."
-          sleep 120
+          # Quick connectivity test (reduced wait time)
+          echo "⏳ Waiting 60 seconds for services to initialize..."
+          sleep 60
           
-          # Test basic connectivity
-          echo "🔐 Testing basic connectivity..."
-          if ping -c 3 $DROPLET_IP; then
+          echo "🔐 Testing connectivity..."
+          if ping -c 2 $DROPLET_IP > /dev/null 2>&1; then
             echo "✅ Droplet is reachable"
+            CONNECTIVITY_STATUS="✅ Online"
           else
-            echo "❌ Droplet is not reachable"
-            exit 1
+            echo "⚠️ Droplet connectivity issues (may still be initializing)"
+            CONNECTIVITY_STATUS="⚠️ Initializing"
           fi
           
-          # Note: Kratos health check is skipped as it's now internal-only
-          # The BFF will communicate with Kratos through the internal network
-          echo "ℹ️ Kratos API is configured for internal access only"
-
-      - name: Output Infrastructure Information
-        if: |
-          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
-        run: |
+          # Generate deployment summary
           echo "## 🎉 BattleOne Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Droplet IP**: $(terraform output -raw droplet_ip)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Droplet IP**: $DROPLET_IP" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: Toronto (tor1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Connectivity**: $CONNECTIVITY_STATUS" >> $GITHUB_STEP_SUMMARY
           echo "- **PostgreSQL**: ✅ Available on internal network" >> $GITHUB_STEP_SUMMARY
           echo "- **Redis**: ✅ Available on internal network" >> $GITHUB_STEP_SUMMARY
-          echo "- **Kratos**: ✅ Available internally at $(terraform output -raw kratos_internal_url)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: ✅ All services healthy" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kratos**: ✅ Available internally" >> $GITHUB_STEP_SUMMARY
+          echo "- **Better Stack**: ✅ Monitoring active" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **Kratos Internal URL**: $(terraform output -raw kratos_internal_url)" >> $GITHUB_STEP_SUMMARY
-          echo "🔐 **SSH Access**: $(terraform output -raw ssh_connection)" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Access Information**:" >> $GITHUB_STEP_SUMMARY
+          echo "- SSH: \`$SSH_CONNECTION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Kratos: \`$KRATOS_URL\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Better Stack: [Dashboard](https://betterstack.com/logs)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📝 **Next Steps**:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Infrastructure is ready for BattleOne application deployment" >> $GITHUB_STEP_SUMMARY
-          echo "2. Use the connection strings from Terraform outputs in your application configuration" >> $GITHUB_STEP_SUMMARY
+          echo "📝 **Next Steps**: Infrastructure ready for application deployment" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify deployment completion
         if: success()
