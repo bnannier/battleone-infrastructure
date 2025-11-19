@@ -24,10 +24,6 @@ terraform {
       source  = "digitalocean/digitalocean"
       version = "~> 2.34"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.4"
-    }
   }
 }
 
@@ -36,10 +32,7 @@ provider "digitalocean" {
   token = var.digitalocean_token
 }
 
-# Generate random suffix for unique resource names
-resource "random_id" "suffix" {
-  byte_length = 4
-}
+# Fixed resource names for consistent infrastructure
 
 # Try to find existing SSH key, create if not found
 data "digitalocean_ssh_keys" "existing_keys" {}
@@ -55,20 +48,20 @@ locals {
 # Create SSH key for droplet access (only if it doesn't exist)
 resource "digitalocean_ssh_key" "battleone_key" {
   count      = local.use_existing_key ? 0 : 1
-  name       = "battleone-infrastructure-key-${random_id.suffix.hex}"
+  name       = "battleone-infrastructure-key"
   public_key = var.ssh_public_key
 }
 
 # Create a VPC for our infrastructure
 resource "digitalocean_vpc" "battleone_vpc" {
-  name     = "battleone-vpc-${random_id.suffix.hex}"
+  name     = "battleone-vpc"
   region   = var.region
   ip_range = "10.50.0.0/24"
 }
 
 # Create a firewall for our droplet
 resource "digitalocean_firewall" "battleone_firewall" {
-  name = "battleone-firewall-${random_id.suffix.hex}"
+  name = "battleone-firewall"
 
   droplet_ids = [digitalocean_droplet.battleone_droplet.id]
 
@@ -118,7 +111,7 @@ resource "digitalocean_firewall" "battleone_firewall" {
 # Create a volume for persistent data
 resource "digitalocean_volume" "battleone_data" {
   region                  = var.region
-  name                    = "battleone-data-${random_id.suffix.hex}"
+  name                    = "battleone-data"
   size                    = 20
   initial_filesystem_type = "ext4"
   description             = "Volume for BattleOne database and cache data"
@@ -127,7 +120,7 @@ resource "digitalocean_volume" "battleone_data" {
 # Create the main infrastructure droplet
 resource "digitalocean_droplet" "battleone_droplet" {
   image    = "docker-20-04" # Ubuntu 20.04 with Docker pre-installed
-  name     = "battleone-${random_id.suffix.hex}"
+  name     = "battleone-droplet"
   region   = var.region
   size     = var.droplet_size
   vpc_uuid = digitalocean_vpc.battleone_vpc.id
