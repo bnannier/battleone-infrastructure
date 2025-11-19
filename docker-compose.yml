@@ -21,7 +21,7 @@ services:
         constraints:
           - node.role == manager
       restart_policy:
-        condition: unless-stopped
+        condition: on-failure
         delay: 10s
         max_attempts: 3
       labels:
@@ -46,7 +46,7 @@ services:
         constraints:
           - node.role == manager
       restart_policy:
-        condition: unless-stopped
+        condition: on-failure
         delay: 10s
         max_attempts: 3
       labels:
@@ -100,7 +100,7 @@ services:
         constraints:
           - node.role == manager
       restart_policy:
-        condition: unless-stopped
+        condition: on-failure
         delay: 10s
         max_attempts: 3
       labels:
@@ -136,7 +136,7 @@ services:
         constraints:
           - node.role == manager
       restart_policy:
-        condition: unless-stopped
+        condition: on-failure
         delay: 10s
         max_attempts: 3
       labels:
@@ -145,4 +145,5 @@ services:
 
 networks:
   battleone-network:
-    driver: bridge
+    driver: overlay
+    attachable: true
