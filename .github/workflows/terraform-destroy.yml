@@ -7,11 +7,6 @@ on:
         description: 'Type "DESTROY" to confirm infrastructure deletion'
         required: true
         type: string
-      auto_approve:
-        description: 'Skip manual approval (DANGEROUS)'
-        required: false
-        default: false
-        type: boolean
 
 env:
   # DigitalOcean Configuration
@@ -119,24 +114,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **This action CANNOT be undone!**" >> $GITHUB_STEP_SUMMARY
 
-      - name: Final Confirmation Check
-        if: |
-          github.event.inputs.auto_approve != 'true' &&
-          steps.plan.outputs.plan_exitcode == 2
-        run: |
-          echo "⚠️ FINAL CONFIRMATION REQUIRED"
-          echo ""
-          echo "This workflow will PERMANENTLY DELETE all infrastructure!"
-          echo "To proceed, you must:"
-          echo "1. Have typed 'DESTROY' in the confirmation field ✅"
-          echo "2. Re-run this workflow with auto_approve=true to confirm"
-          echo ""
-          echo "💡 Re-run command:"
-          echo "gh workflow run 'Destroy BattleOne Infrastructure' --field confirmation=DESTROY --field auto_approve=true"
-          echo ""
-          echo "❌ Stopping here to prevent accidental destruction."
-          echo "Review the destruction plan above, then re-run with auto_approve=true if you're certain."
-          exit 1
 
       - name: Terraform Destroy
         if: steps.plan.outputs.plan_exitcode == 2 || steps.plan.outputs.plan_exitcode == 0
