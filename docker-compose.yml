@@ -68,7 +68,8 @@ services:
     volumes:
       - ./kratos:/etc/config/kratos
     depends_on:
-      - kratos-migrate
+      kratos-migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
