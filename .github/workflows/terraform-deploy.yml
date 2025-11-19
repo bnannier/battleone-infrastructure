@@ -60,6 +60,7 @@ env:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
       - name: Checkout code
@@ -206,9 +207,10 @@ jobs:
           
           echo "🌐 Infrastructure deployed to: $DROPLET_IP"
           
-          # Quick connectivity test (reduced wait time)
-          echo "⏳ Waiting 60 seconds for services to initialize..."
-          sleep 60
+          # Wait for full infrastructure provisioning (increased timeout)
+          echo "⏳ Waiting 5 minutes for full infrastructure provisioning..."
+          echo "   This includes: Docker image pulls, database initialization, and service startup"
+          sleep 300
           
           echo "🔐 Testing connectivity..."
           if ping -c 2 $DROPLET_IP > /dev/null 2>&1; then
