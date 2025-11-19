@@ -226,9 +226,9 @@ jobs:
             # Ensure swarm is initialized
             docker swarm init --advertise-addr $(hostname -I | awk '{print $1}') 2>/dev/null || echo "Swarm already initialized"
             
-            # Deploy the stack
-            echo "Deploying stack..."
-            if docker stack deploy -c docker-compose.yml battleone; then
+            # Deploy the stack with environment variables
+            echo "Deploying stack with environment variables..."
+            if source .env && docker stack deploy -c docker-compose.yml battleone; then
               echo "✅ Stack deployment command succeeded"
             else
               echo "❌ Stack deployment command failed"

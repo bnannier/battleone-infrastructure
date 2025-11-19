@@ -58,6 +58,9 @@ services:
   kratos-migrate:
     image: oryd/kratos:v1.0.0
     environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
       - DSN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable&max_conns=20&max_idle_conns=4
     volumes:
       - /opt/battleone/kratos:/etc/config/kratos
@@ -80,6 +83,9 @@ services:
     # The BFF will communicate with Kratos via the internal network on port 4433
     # Admin API (4434) also internal only
     environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
       - DSN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable&max_conns=20&max_idle_conns=4
       - LOG_LEVEL=info
     command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
