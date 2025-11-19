@@ -78,6 +78,11 @@ jobs:
         with:
           terraform_version: "~1.6"
 
+      - name: Setup DigitalOcean CLI
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_USER_ACCESS_TOKEN }}
+
       - name: Cache Terraform
         uses: actions/cache@v3
         with:
