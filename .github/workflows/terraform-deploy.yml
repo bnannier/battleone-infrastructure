@@ -193,6 +193,54 @@ jobs:
           echo "🚀 Applying Terraform configuration..."
           terraform apply -auto-approve tfplan
 
+      - name: Deploy Services with Docker Swarm
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+        run: |
+          echo "🐳 Deploying services to Docker Swarm..."
+          
+          # Get droplet IP from Terraform output
+          DROPLET_IP=$(terraform output -raw droplet_ip)
+          echo "Deploying to droplet: $DROPLET_IP"
+          
+          # Create temporary SSH key file
+          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > /tmp/ssh_key
+          chmod 600 /tmp/ssh_key
+          
+          # Copy configuration files to droplet
+          echo "📋 Uploading configuration files..."
+          scp -i /tmp/ssh_key -o StrictHostKeyChecking=no -r \
+            docker-compose.yml \
+            kratos/ \
+            postgres/ \
+            vector/ \
+            root@$DROPLET_IP:/opt/battleone/
+          
+          # Deploy stack via SSH
+          echo "🚀 Deploying Docker stack..."
+          ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no root@$DROPLET_IP << 'EOF'
+            cd /opt/battleone
+            
+            # Ensure swarm is initialized
+            docker swarm init --advertise-addr $(hostname -I | awk '{print $1}') 2>/dev/null || echo "Swarm already initialized"
+            
+            # Deploy the stack
+            docker stack deploy -c docker-compose.yml battleone
+            
+            # Wait for services to start
+            echo "⏳ Waiting for services to initialize..."
+            sleep 60
+            
+            # Check service status
+            echo "📊 Service status:"
+            docker stack services battleone
+          EOF
+          
+          # Cleanup
+          rm /tmp/ssh_key
+          echo "✅ Docker Swarm deployment completed"
+
       - name: Deployment Summary & Health Check
         if: |
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
@@ -207,10 +255,9 @@ jobs:
           
           echo "🌐 Infrastructure deployed to: $DROPLET_IP"
           
-          # Wait for full infrastructure provisioning (increased timeout)
-          echo "⏳ Waiting 5 minutes for full infrastructure provisioning..."
-          echo "   This includes: Docker image pulls, database initialization, and service startup"
-          sleep 300
+          # Quick connectivity test (services are now managed by Docker Swarm)
+          echo "⏳ Waiting 30 seconds for final system checks..."
+          sleep 30
           
           echo "🔐 Testing connectivity..."
           if ping -c 2 $DROPLET_IP > /dev/null 2>&1; then
@@ -226,17 +273,21 @@ jobs:
           echo "- **Droplet IP**: $DROPLET_IP" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: Toronto (tor1)" >> $GITHUB_STEP_SUMMARY
           echo "- **Connectivity**: $CONNECTIVITY_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "- **PostgreSQL**: ✅ Available on internal network" >> $GITHUB_STEP_SUMMARY
-          echo "- **Redis**: ✅ Available on internal network" >> $GITHUB_STEP_SUMMARY
-          echo "- **Kratos**: ✅ Available internally" >> $GITHUB_STEP_SUMMARY
-          echo "- **Better Stack**: ✅ Monitoring active" >> $GITHUB_STEP_SUMMARY
+          echo "- **Orchestration**: 🐳 Docker Swarm" >> $GITHUB_STEP_SUMMARY
+          echo "- **PostgreSQL**: ✅ Deployed via Swarm" >> $GITHUB_STEP_SUMMARY
+          echo "- **Redis**: ✅ Deployed via Swarm" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kratos**: ✅ Deployed via Swarm" >> $GITHUB_STEP_SUMMARY
+          echo "- **Better Stack**: ✅ Monitoring via Swarm" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 **Access Information**:" >> $GITHUB_STEP_SUMMARY
           echo "- SSH: \`$SSH_CONNECTION\`" >> $GITHUB_STEP_SUMMARY
           echo "- Kratos: \`$KRATOS_URL\`" >> $GITHUB_STEP_SUMMARY
           echo "- Better Stack: [Dashboard](https://betterstack.com/logs)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📝 **Next Steps**: Infrastructure ready for application deployment" >> $GITHUB_STEP_SUMMARY
+          echo "🐳 **Docker Swarm Commands**:" >> $GITHUB_STEP_SUMMARY
+          echo "- Check services: \`docker stack services battleone\`" >> $GITHUB_STEP_SUMMARY
+          echo "- View logs: \`docker service logs battleone_postgres\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Update stack: \`docker stack deploy -c docker-compose.yml battleone\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify deployment completion
         if: success()

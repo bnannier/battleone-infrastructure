@@ -18,10 +18,13 @@ ssh_authorized_keys:
   - ${laptop_ssh_public_key}
   %{ endif ~}
 
-# Create directories
+# Create directories and initialize Docker Swarm
 runcmd:
-  # Create application directory
+  # Create application directory structure
   - mkdir -p /opt/battleone
+  - mkdir -p /opt/battleone/kratos
+  - mkdir -p /opt/battleone/postgres  
+  - mkdir -p /opt/battleone/vector
   
   # Install Docker Compose (if not already installed)
   - curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -34,13 +37,17 @@ runcmd:
   - systemctl enable docker
   - systemctl start docker
   
+  # Wait for Docker to be fully ready
+  - sleep 10
+  
+  # Initialize Docker Swarm (idempotent - safe to run multiple times)
+  - docker swarm init --advertise-addr $(hostname -I | awk '{print $1}') || echo "Swarm already initialized"
+  
   # Set environment variables for later use
   - echo "POSTGRES_PASSWORD=${postgres_password}" >> /opt/battleone/.env
   - echo "POSTGRES_USER=${postgres_user}" >> /opt/battleone/.env
   - echo "POSTGRES_DB=${postgres_db}" >> /opt/battleone/.env
   - echo "REDIS_PASSWORD=${redis_password}" >> /opt/battleone/.env
-  - echo "DATADOG_API_KEY=${datadog_api_key}" >> /opt/battleone/.env
-  - echo "DATADOG_SITE=${datadog_site}" >> /opt/battleone/.env
   - echo "BETTERSTACK_SOURCE_TOKEN=${betterstack_source_token}" >> /opt/battleone/.env
   - echo "BETTERSTACK_INGESTION_HOST=${betterstack_ingestion_host}" >> /opt/battleone/.env
 
@@ -54,9 +61,12 @@ write_files:
       - PostgreSQL database
       - Redis cache
       - Kratos identity management
+      - Better Stack monitoring
       
-      Services are managed via Docker Compose.
+      Services are managed via Docker Swarm.
       
-      To check status: cd /opt/battleone && docker-compose ps
-      To view logs: cd /opt/battleone && docker-compose logs
+      To check status: docker stack services battleone
+      To view service logs: docker service logs battleone_postgres
+      To deploy stack: docker stack deploy -c docker-compose.yml battleone
+      To remove stack: docker stack rm battleone
     permissions: '0644'
