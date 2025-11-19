@@ -95,8 +95,8 @@ gh workflow run "Deploy BattleOne Infrastructure" --field action=apply
 # Preview changes only  
 gh workflow run "Deploy BattleOne Infrastructure" --field action=plan
 
-# Destroy all resources
-gh workflow run "Deploy BattleOne Infrastructure" --field action=destroy
+# Destroy all resources (SEPARATE WORKFLOW)
+gh workflow run "Destroy BattleOne Infrastructure" --field confirmation=DESTROY
 ```
 
 ## 🌐 Service Access

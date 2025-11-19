@@ -1,0 +1,172 @@
+name: Destroy BattleOne Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "DESTROY" to confirm infrastructure deletion'
+        required: true
+        type: string
+      auto_approve:
+        description: 'Skip manual approval (DANGEROUS)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  # DigitalOcean Configuration
+  TF_VAR_digitalocean_token: ${{ secrets.DO_USER_ACCESS_TOKEN }}
+  TF_VAR_spaces_access_key: ${{ secrets.DO_SPACES_ACCESS_KEY }}
+  TF_VAR_spaces_secret_key: ${{ secrets.DO_SPACES_SECRET_KEY }}
+  TF_VAR_ssh_private_key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+  TF_VAR_ssh_public_key: ${{ secrets.DO_SSH_PUBLIC_KEY }}
+  TF_VAR_laptop_ssh_public_key: ${{ secrets.DO_SSH_PUBLIC_KEY }}
+  
+  # Database Configuration
+  TF_VAR_postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
+  TF_VAR_redis_password: ${{ secrets.REDIS_PASSWORD }}
+  TF_VAR_postgres_db: ${{ secrets.POSTGRES_DB || 'battleone' }}
+  TF_VAR_postgres_user: ${{ secrets.POSTGRES_USER || 'battleone_user' }}
+  
+  # Better Stack Configuration
+  TF_VAR_betterstack_source_token: ${{ secrets.BETTERSTACK_SOURCE_TOKEN }}
+  TF_VAR_betterstack_ingestion_host: ${{ secrets.BETTERSTACK_INGESTION_HOST || 'in.logs.betterstack.com' }}
+  
+  # Datadog Configuration (Deprecated - keeping for backward compatibility)
+  TF_VAR_datadog_api_key: ${{ secrets.DATADOG_API_KEY || '' }}
+  TF_VAR_datadog_site: ${{ secrets.DATADOG_SITE || 'datadoghq.com' }}
+  
+  # Infrastructure Settings
+  TF_VAR_region: "tor1"
+  TF_VAR_droplet_size: "s-2vcpu-4gb"
+  
+  # DigitalOcean Spaces for Terraform State
+  AWS_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_KEY }}
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "DESTROY" ]; then
+            echo "❌ Invalid confirmation. You must type 'DESTROY' exactly to proceed."
+            echo "You entered: '${{ github.event.inputs.confirmation }}'"
+            exit 1
+          fi
+          echo "✅ Confirmation validated"
+
+      - name: Validate required secrets
+        run: |
+          echo "🔍 Validating required secrets..."
+          
+          # Check critical DigitalOcean secrets
+          if [ -z "${{ secrets.DO_USER_ACCESS_TOKEN }}" ]; then
+            echo "❌ DO_USER_ACCESS_TOKEN secret is missing"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.DO_SPACES_ACCESS_KEY }}" ]; then
+            echo "❌ DO_SPACES_ACCESS_KEY secret is missing"
+            exit 1
+          fi
+          
+          echo "✅ Required secrets are configured"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+
+      - name: Cache Terraform
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            .terraform
+          key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: terraform-
+
+      - name: Terraform Init
+        run: |
+          echo "🚀 Initializing Terraform..."
+          terraform init
+
+      - name: Terraform Plan Destroy
+        id: plan
+        run: |
+          echo "📋 Creating destruction plan..."
+          terraform plan -destroy -detailed-exitcode -out=destroy.tfplan
+          echo "plan_exitcode=$?" >> $GITHUB_OUTPUT
+
+      - name: Show Destroy Plan
+        run: |
+          echo "## ⚠️ DESTRUCTION PLAN" >> $GITHUB_STEP_SUMMARY
+          echo "**The following infrastructure will be PERMANENTLY DELETED:**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          terraform show -no-color destroy.tfplan >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **This action CANNOT be undone!**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Manual Approval
+        if: |
+          github.event.inputs.auto_approve != 'true' &&
+          steps.plan.outputs.plan_exitcode == '2'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.repository_owner }}
+          minimum-approvals: 1
+          issue-title: "⚠️ CONFIRM INFRASTRUCTURE DESTRUCTION"
+          issue-body: |
+            # ⚠️ CRITICAL: Infrastructure Destruction Approval Required
+            
+            **You are about to PERMANENTLY DELETE the entire BattleOne infrastructure.**
+            
+            **What will be destroyed:**
+            - DigitalOcean droplet in Toronto (tor1)
+            - PostgreSQL database (ALL DATA WILL BE LOST)
+            - Redis cache
+            - Kratos identity management
+            - All associated networking and storage
+            
+            **⚠️ THIS ACTION CANNOT BE UNDONE ⚠️**
+            
+            Please review the destruction plan above carefully before approving.
+            
+            **Confirmation**: ${{ github.event.inputs.confirmation }}
+            **Branch**: ${{ github.ref_name }}
+            **Commit**: ${{ github.sha }}
+
+      - name: Terraform Destroy
+        if: steps.plan.outputs.plan_exitcode == '2'
+        run: |
+          echo "🗑️ DESTROYING INFRASTRUCTURE..."
+          echo "⚠️ This will permanently delete all resources!"
+          terraform apply -auto-approve destroy.tfplan
+
+      - name: Destruction Complete
+        if: success()
+        run: |
+          echo "## 🗑️ Infrastructure Destruction Complete" >> $GITHUB_STEP_SUMMARY
+          echo "All BattleOne infrastructure has been permanently destroyed." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Resources Deleted:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ DigitalOcean droplet" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ PostgreSQL database" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Redis cache" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Kratos identity management" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Associated networking and storage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💰 **Cost savings**: Infrastructure costs have stopped." >> $GITHUB_STEP_SUMMARY
+          echo "🔄 **To redeploy**: Use the main deployment workflow." >> $GITHUB_STEP_SUMMARY
+          
+          echo "🎉 Infrastructure destruction completed successfully!"
+          echo "💰 Monthly costs (~$26.50) have been eliminated."

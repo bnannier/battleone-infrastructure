@@ -19,7 +19,6 @@ on:
         type: choice
         options:
           - apply
-          - destroy
           - plan
       auto_approve:
         description: 'Auto-approve the action (skip manual approval)'
@@ -201,14 +200,6 @@ jobs:
         run: |
           echo "🚀 Applying Terraform configuration..."
           terraform apply -auto-approve tfplan
-
-      - name: Terraform Destroy
-        if: |
-          github.event_name == 'workflow_dispatch' && 
-          github.event.inputs.action == 'destroy'
-        run: |
-          echo "🗑️ Destroying Terraform infrastructure..."
-          terraform destroy -auto-approve
 
       - name: Deployment Summary & Health Check
         if: |
