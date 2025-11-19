@@ -20,10 +20,8 @@ services:
       timeout: 10s
       retries: 3
     labels:
-      com.datadoghq.ad.check_names: '["postgres"]'
-      com.datadoghq.ad.init_configs: '[{}]'
-      com.datadoghq.ad.instances: '[{"host":"%%host%%","port":"5432","username":"datadog","password":"secure_datadog_monitor_2023","dbname":"battleone","tags":["service:battleone-postgres"]}]'
-      com.datadoghq.ad.logs: '[{"source":"postgres","service":"battleone-postgres"}]'
+      service: battleone-postgres
+      environment: production
 
   redis:
     image: redis:7-alpine
@@ -40,10 +38,8 @@ services:
       timeout: 10s
       retries: 3
     labels:
-      com.datadoghq.ad.check_names: '["redisdb"]'
-      com.datadoghq.ad.init_configs: '[{}]'
-      com.datadoghq.ad.instances: '[{"host":"%%host%%","port":"6379","password":"${REDIS_PASSWORD}","tags":["service:battleone-redis"]}]'
-      com.datadoghq.ad.logs: '[{"source":"redis","service":"battleone-redis"}]'
+      service: battleone-redis
+      environment: production
 
   kratos-migrate:
     image: oryd/kratos:v1.0.0
@@ -86,43 +82,37 @@ services:
       timeout: 10s
       retries: 3
     labels:
-      com.datadoghq.ad.check_names: '["http_check"]'
-      com.datadoghq.ad.init_configs: '[{}]'
-      com.datadoghq.ad.instances: '[{"name":"battleone-kratos-health","url":"http://%%host%%:4433/health/ready","timeout":10,"tags":["service:battleone-kratos"]}]'
-      com.datadoghq.ad.logs: '[{"source":"kratos","service":"battleone-kratos"}]'
+      service: battleone-kratos
+      environment: production
 
-  # Datadog Agent for monitoring
-  datadog-agent:
-    image: gcr.io/datadoghq/agent:7
-    container_name: battleone-datadog-agent
+  # Better Stack Vector Agent for monitoring
+  vector-agent:
+    image: timberio/vector:latest-alpine
+    container_name: battleone-vector
     environment:
-      - DD_API_KEY=${DATADOG_API_KEY}
-      - DD_SITE=${DATADOG_SITE:-datadoghq.com}
-      - DD_HOSTNAME=battleone-droplet
-      - DD_TAGS=environment:production,service:battleone,version:1.0.0
-      - DD_AC_EXCLUDE=name:battleone-datadog-agent  # Don't monitor itself
-      - DD_LOGS_ENABLED=true
-      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
-      - DD_CONTAINER_EXCLUDE=name:battleone-datadog-agent
-      - DD_DOCKER_LABELS_AS_TAGS=true
-      - DD_PROCESS_AGENT_ENABLED=true
-      - DD_SYSTEM_PROBE_ENABLED=true
+      - BETTERSTACK_SOURCE_TOKEN=${BETTERSTACK_SOURCE_TOKEN}
+      - BETTERSTACK_INGESTION_HOST=${BETTERSTACK_INGESTION_HOST:-in.logs.betterstack.com}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /proc/:/host/proc/:ro
-      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
-      - /opt/datadog-agent/run:/opt/datadog-agent/run:rw
-      - /etc/datadog-agent/:/etc/datadog-agent/
-      - ./datadog/conf.d/:/etc/datadog-agent/conf.d/
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - ./vector/vector.yml:/etc/vector/vector.yml:ro
     networks:
       - battleone-network
     restart: unless-stopped
-    privileged: true
-    pid: host
+    command: ["vector", "--config", "/etc/vector/vector.yml"]
+    depends_on:
+      - postgres
+      - redis
+      - kratos
+    healthcheck:
+      test: ["CMD", "vector", "validate", "/etc/vector/vector.yml"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     labels:
-      com.datadoghq.ad.check_names: '["docker"]'
-      com.datadoghq.ad.init_configs: '[{}]'
-      com.datadoghq.ad.instances: '[{"docker_root":"/","container_whitelist":[]}]'
+      service: battleone-vector
+      environment: production
 
 networks:
   battleone-network:

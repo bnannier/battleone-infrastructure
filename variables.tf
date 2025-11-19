@@ -72,13 +72,27 @@ variable "redis_password" {
 }
 
 variable "datadog_api_key" {
-  description = "Datadog API Key for monitoring"
+  description = "Datadog API Key for monitoring (deprecated - use Better Stack)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "datadog_site" {
+  description = "Datadog site (deprecated - use Better Stack)"
+  type        = string
+  default     = "datadoghq.com"
+}
+
+# Better Stack monitoring variables
+variable "betterstack_source_token" {
+  description = "Better Stack source token for log ingestion"
   type        = string
   sensitive   = true
 }
 
-variable "datadog_site" {
-  description = "Datadog site (datadoghq.com, datadoghq.eu, etc.)"
+variable "betterstack_ingestion_host" {
+  description = "Better Stack ingestion host (e.g., in.logs.betterstack.com)"
   type        = string
-  default     = "datadoghq.com"
+  default     = "in.logs.betterstack.com"
 }

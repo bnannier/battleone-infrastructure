@@ -16,3 +16,11 @@ postgres_db       = "battleone"
 
 # Redis Configuration
 redis_password = "secure-redis-password"
+
+# Monitoring Configuration - Better Stack (Primary)
+betterstack_source_token    = "your-betterstack-source-token-here"
+betterstack_ingestion_host  = "in.logs.betterstack.com"
+
+# Legacy Datadog Configuration (Optional - deprecated)
+# datadog_api_key = "your-datadog-api-key-here"
+# datadog_site    = "datadoghq.com"

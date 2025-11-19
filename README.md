@@ -1,6 +1,6 @@
 # BattleOne Infrastructure
 
-This repository contains Terraform configuration to deploy the BattleOne infrastructure on DigitalOcean, including PostgreSQL, Redis, Kratos identity management, and comprehensive Datadog monitoring.
+This repository contains Terraform configuration to deploy the BattleOne infrastructure on DigitalOcean, including PostgreSQL, Redis, Kratos identity management, and comprehensive Better Stack monitoring.
 
 🚀 **Production-ready infrastructure with automated deployment, security hardening, and enterprise-grade monitoring!**
 
@@ -9,7 +9,7 @@ This repository contains Terraform configuration to deploy the BattleOne infrast
 ### Setup Guides
 - **[DigitalOcean Setup](./docs/DIGITALOCEAN_SETUP.md)** - Complete DigitalOcean account and resource configuration
 - **[GitHub Setup](./docs/GITHUB_SETUP.md)** - GitHub repository, secrets, and Actions configuration  
-- **[Datadog Monitoring](./docs/DATADOG_SETUP.md)** - Free tier monitoring setup for all services
+- **[Better Stack Monitoring](./docs/BETTERSTACK_SETUP.md)** - Modern log management and uptime monitoring
 
 ### Reference
 - **[Project State](./docs/claude-state.md)** - Development session state and progress tracking
@@ -18,22 +18,22 @@ This repository contains Terraform configuration to deploy the BattleOne infrast
 
 - **Platform**: DigitalOcean Droplet + Spaces + VPC
 - **Region**: Toronto (tor1) - configurable
-- **Services**: PostgreSQL, Redis, Kratos, Datadog Agent
+- **Services**: PostgreSQL, Redis, Kratos, Better Stack Vector Agent
 - **State Storage**: DigitalOcean Spaces (S3-compatible)
 - **Deployment**: GitHub Actions + Terraform
-- **Monitoring**: Datadog (free tier)
+- **Monitoring**: Better Stack (modern observability platform)
 
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
 - DigitalOcean account with payment method
 - GitHub repository with this code
-- Datadog account (free tier)
+- Better Stack account (generous free tier)
 
 ### 2. Setup (15 minutes)
 1. **[Configure DigitalOcean](./docs/DIGITALOCEAN_SETUP.md)** - API keys, Spaces, SSH keys
 2. **[Configure GitHub](./docs/GITHUB_SETUP.md)** - Repository secrets, Actions
-3. **[Configure Datadog](./docs/DATADOG_SETUP.md)** - Free monitoring setup
+3. **[Configure Better Stack](./docs/BETTERSTACK_SETUP.md)** - Modern monitoring setup
 
 ### 3. Deploy
 - Push to main branch OR manually trigger GitHub Actions
@@ -42,7 +42,7 @@ This repository contains Terraform configuration to deploy the BattleOne infrast
 
 ### 4. Access
 - **SSH**: `ssh root@DROPLET_IP`
-- **Monitoring**: [Datadog Dashboard](https://app.datadoghq.com/infrastructure)
+- **Monitoring**: [Better Stack Dashboard](https://betterstack.com/logs)
 - **Services**: All internal-only (secure by design)
 
 ## 🏗️ Infrastructure Components
@@ -51,7 +51,7 @@ This repository contains Terraform configuration to deploy the BattleOne infrast
 - **PostgreSQL 15**: Primary database with persistent storage
 - **Redis 7**: Cache and session storage with authentication  
 - **Kratos v1.0.0**: Identity and user management system
-- **Datadog Agent**: Comprehensive monitoring and logging
+- **Better Stack Vector Agent**: Modern log collection and monitoring
 
 ### Infrastructure  
 - **DigitalOcean Droplet**: s-2vcpu-4gb (scalable)
@@ -67,7 +67,7 @@ This repository contains Terraform configuration to deploy the BattleOne infrast
 | **Droplet** (s-2vcpu-4gb) | $24.00 | Scalable compute |
 | **Block Storage** (20GB) | $2.00 | Persistent data |
 | **Spaces** (Terraform state) | $0.50 | Object storage |
-| **Datadog Monitoring** | $0.00 | Free tier |
+| **Better Stack Monitoring** | $0.00 | Generous free tier |
 | **Total** | **~$26.50** | Production-ready infrastructure |
 
 *New DigitalOcean accounts get $200 free credit (60 days)*
@@ -193,11 +193,11 @@ docker-compose logs [service_name]
 docker-compose logs postgres
 docker-compose logs redis  
 docker-compose logs kratos
-docker-compose logs datadog-agent
+docker-compose logs vector-agent
 ```
 
 ### Monitoring Dashboard
-Access your **free** Datadog dashboard at [app.datadoghq.com/infrastructure](https://app.datadoghq.com/infrastructure)
+Access your **free** Better Stack dashboard at [betterstack.com/logs](https://betterstack.com/logs)
 
 ## 🚨 Troubleshooting
 
@@ -226,6 +226,6 @@ ping 10.50.0.2
 1. **📋 Documentation**: Check the comprehensive guides in `docs/`
 2. **🐙 GitHub Issues**: Review Actions logs and error messages  
 3. **☁️ DigitalOcean**: Verify account status and resource limits
-4. **📊 Datadog**: Monitor service health and performance metrics
+4. **📊 Better Stack**: Monitor service health and performance metrics
 
 For detailed troubleshooting, see the setup guides in the `docs/` folder.

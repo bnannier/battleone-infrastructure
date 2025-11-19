@@ -39,6 +39,10 @@ runcmd:
   - echo "POSTGRES_USER=${postgres_user}" >> /opt/battleone/.env
   - echo "POSTGRES_DB=${postgres_db}" >> /opt/battleone/.env
   - echo "REDIS_PASSWORD=${redis_password}" >> /opt/battleone/.env
+  - echo "DATADOG_API_KEY=${datadog_api_key}" >> /opt/battleone/.env
+  - echo "DATADOG_SITE=${datadog_site}" >> /opt/battleone/.env
+  - echo "BETTERSTACK_SOURCE_TOKEN=${betterstack_source_token}" >> /opt/battleone/.env
+  - echo "BETTERSTACK_INGESTION_HOST=${betterstack_ingestion_host}" >> /opt/battleone/.env
 
 # Set file permissions
 write_files:

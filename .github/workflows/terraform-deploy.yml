@@ -42,8 +42,12 @@ env:
   TF_VAR_postgres_db: ${{ secrets.POSTGRES_DB || 'battleone' }}
   TF_VAR_postgres_user: ${{ secrets.POSTGRES_USER || 'battleone_user' }}
   
-  # Datadog Configuration
-  TF_VAR_datadog_api_key: ${{ secrets.DATADOG_API_KEY }}
+  # Better Stack Configuration
+  TF_VAR_betterstack_source_token: ${{ secrets.BETTERSTACK_SOURCE_TOKEN }}
+  TF_VAR_betterstack_ingestion_host: ${{ secrets.BETTERSTACK_INGESTION_HOST || 'in.logs.betterstack.com' }}
+  
+  # Datadog Configuration (Deprecated - keeping for backward compatibility)
+  TF_VAR_datadog_api_key: ${{ secrets.DATADOG_API_KEY || '' }}
   TF_VAR_datadog_site: ${{ secrets.DATADOG_SITE || 'datadoghq.com' }}
   
   # Infrastructure Settings
@@ -102,9 +106,9 @@ jobs:
             exit 1
           fi
           
-          # Check Datadog secrets
-          if [ -z "${{ secrets.DATADOG_API_KEY }}" ]; then
-            echo "❌ DATADOG_API_KEY secret is missing"
+          # Check Better Stack secrets
+          if [ -z "${{ secrets.BETTERSTACK_SOURCE_TOKEN }}" ]; then
+            echo "❌ BETTERSTACK_SOURCE_TOKEN secret is missing"
             exit 1
           fi
           

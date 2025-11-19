@@ -1,0 +1,95 @@
+# Better Stack Vector Configuration for BattleOne Infrastructure
+# This configuration collects Docker logs and sends them to Better Stack
+
+# Data sources
+sources:
+  # Docker container logs
+  docker_logs:
+    type: docker_logs
+    # Include all containers in the battleone network
+    include_containers:
+      - "battleone-postgres"
+      - "battleone-redis" 
+      - "battleone-kratos"
+      - "battleone-kratos-migrate"
+    # Exclude the vector agent itself
+    exclude_containers:
+      - "battleone-vector"
+
+  # Host metrics
+  host_metrics:
+    type: host_metrics
+    collectors:
+      - cpu
+      - disk
+      - filesystem
+      - load
+      - host
+      - memory
+      - network
+    scrape_interval_secs: 30
+
+# Data transformations
+transforms:
+  # Add BattleOne specific tags and formatting
+  battleone_transform:
+    type: remap
+    inputs:
+      - "docker_logs"
+      - "host_metrics"
+    source: |
+      # Add consistent timestamp format
+      .dt = del(.timestamp)
+      
+      # Add BattleOne specific tags
+      .tags.environment = "production"
+      .tags.infrastructure = "digitalocean"
+      .tags.project = "battleone"
+      
+      # Parse container labels for service identification
+      if exists(.container_name) {
+        if match(.container_name, r"postgres") {
+          .tags.service = "battleone-postgres"
+        } else if match(.container_name, r"redis") {
+          .tags.service = "battleone-redis"
+        } else if match(.container_name, r"kratos") {
+          .tags.service = "battleone-kratos"
+        }
+      }
+      
+      # Add host identification
+      .tags.hostname = "battleone-droplet"
+
+# Data sinks
+sinks:
+  # Better Stack logs endpoint
+  better_stack_logs:
+    type: http
+    method: post
+    inputs:
+      - "battleone_transform"
+    uri: "https://${BETTERSTACK_INGESTION_HOST}/"
+    encoding:
+      codec: json
+    compression: gzip
+    auth:
+      strategy: bearer
+      token: "${BETTERSTACK_SOURCE_TOKEN}"
+    healthcheck:
+      enabled: true
+    buffer:
+      max_events: 1000
+      when_full: block
+    request:
+      timeout_secs: 30
+      retry_attempts: 5
+
+  # Console output for debugging (optional)
+  console_debug:
+    type: console
+    inputs:
+      - "battleone_transform"
+    encoding:
+      codec: json
+    # Uncomment for debugging
+    # target: stdout
