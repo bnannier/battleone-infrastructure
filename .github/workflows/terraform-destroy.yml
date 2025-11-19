@@ -95,7 +95,7 @@ jobs:
       - name: Terraform Init
         run: |
           echo "🚀 Initializing Terraform..."
-          terraform init
+          terraform init -reconfigure
 
       - name: Terraform Plan Destroy
         id: plan

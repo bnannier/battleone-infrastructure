@@ -131,7 +131,7 @@ jobs:
       - name: Terraform Init & Validate
         run: |
           echo "🚀 Initializing and validating Terraform configuration..."
-          terraform init
+          terraform init -reconfigure
           terraform validate
 
       - name: Terraform Plan
