@@ -5,10 +5,10 @@ terraform {
   required_version = ">= 1.0"
 
   backend "s3" {
-    endpoint = "https://nyc3.digitaloceanspaces.com"
+    endpoint = "https://tor1.digitaloceanspaces.com"
     bucket = "battleone-terraform-state"
     key    = "terraform.tfstate"
-    region = "us-east-1" # Required for S3 compatibility, actual region is nyc3
+    region = "us-east-1" # Required for S3 compatibility, actual region is tor1
 
     skip_credentials_validation = true
     skip_metadata_api_check     = true
