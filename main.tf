@@ -64,6 +64,9 @@ resource "digitalocean_firewall" "battleone_firewall" {
   name = "battleone-firewall"
 
   droplet_ids = [digitalocean_droplet.battleone_droplet.id]
+  
+  # Ensure firewall is destroyed before VPC
+  depends_on = [digitalocean_droplet.battleone_droplet]
 
   # SSH access
   inbound_rule {
