@@ -220,21 +220,49 @@ jobs:
           # Deploy stack via SSH
           echo "🚀 Deploying Docker stack..."
           ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no root@$DROPLET_IP << 'EOF'
+            set -e  # Exit on any error
             cd /opt/battleone
             
             # Ensure swarm is initialized
             docker swarm init --advertise-addr $(hostname -I | awk '{print $1}') 2>/dev/null || echo "Swarm already initialized"
             
             # Deploy the stack
-            docker stack deploy -c docker-compose.yml battleone
+            echo "Deploying stack..."
+            if docker stack deploy -c docker-compose.yml battleone; then
+              echo "✅ Stack deployment command succeeded"
+            else
+              echo "❌ Stack deployment command failed"
+              exit 1
+            fi
             
             # Wait for services to start
             echo "⏳ Waiting for services to initialize..."
             sleep 60
             
-            # Check service status
+            # Check service status and verify all services are running
             echo "📊 Service status:"
             docker stack services battleone
+            
+            # Count running services vs expected
+            RUNNING_SERVICES=$(docker stack services battleone --format "{{.Replicas}}" | grep -c "1/1" || true)
+            TOTAL_SERVICES=$(docker stack services battleone --format "{{.Name}}" | wc -l)
+            
+            echo "Services running: $RUNNING_SERVICES/$TOTAL_SERVICES"
+            
+            if [ "$RUNNING_SERVICES" -lt "$TOTAL_SERVICES" ]; then
+              echo "⚠️  Not all services are running yet, checking for errors..."
+              
+              # Show any service errors
+              for service in $(docker stack services battleone --format "{{.Name}}"); do
+                echo "--- $service logs ---"
+                docker service logs "$service" --tail=10 2>/dev/null || echo "No logs available"
+              done
+              
+              # Don't fail deployment if services are just starting up
+              echo "⏳ Services may still be starting up. Check status with: docker stack services battleone"
+            else
+              echo "✅ All services are running successfully!"
+            fi
           EOF
           
           # Cleanup
