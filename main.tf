@@ -358,46 +358,20 @@ resource "null_resource" "deploy_services" {
     }
   }
 
-  # Deploy the services
+  # Quick deployment check - just ensure services are running
   provisioner "remote-exec" {
     inline = [
-      # Verify Docker is installed
-      "echo '=== Verifying Docker Installation ==='",
-      "which docker || (echo 'Docker not found!' && exit 1)",
-      "docker --version",
-      "which docker-compose || (echo 'Docker Compose not found!' && exit 1)",
-      "docker-compose --version",
-      
-      # Navigate to deployment directory
-      "echo '=== Navigating to deployment directory ==='",
       "cd /opt/battleone",
-      "pwd",
-      "ls -la",
-
-      # Create environment file to avoid shell issues with quotes
-      "echo '=== Creating environment file ==='",
       "cat > .env << 'EOF'",
       "POSTGRES_PASSWORD=${var.postgres_password}",
       "POSTGRES_USER=${var.postgres_user}",
       "POSTGRES_DB=${var.postgres_db}",
       "REDIS_PASSWORD=${var.redis_password}",
-      "DATADOG_API_KEY=${var.datadog_api_key}",
-      "DATADOG_SITE=${var.datadog_site}",
+      "BETTERSTACK_SOURCE_TOKEN=${var.betterstack_source_token}",
+      "BETTERSTACK_INGESTION_HOST=${var.betterstack_ingestion_host}",
       "EOF",
-      "echo 'Environment file created'",
-
-      # Validate docker-compose configuration (with timeout)
-      "echo '=== Validating Docker Compose configuration ==='",
-      "timeout 30 docker-compose config --quiet || echo 'Config validation skipped due to timeout'",
-
-      # Restart services with better error handling and timeouts
-      "echo '=== Restarting services ==='",
-      "timeout 120 docker-compose restart || (echo 'Restart failed, trying up -d' && timeout 120 docker-compose up -d) || echo 'Service start failed but continuing'",
-
-      # Quick status check with timeout
-      "echo '=== Final status check ==='",
-      "timeout 30 docker-compose ps || echo 'Status check timed out but deployment complete'",
-      "echo 'Deployment completed successfully'"
+      "docker compose up -d --remove-orphans",
+      "echo 'Deployment completed'"
     ]
 
     connection {
