@@ -51,7 +51,7 @@ env:
   
   # Infrastructure Settings
   TF_VAR_region: "tor1"
-  TF_VAR_droplet_size: "s-1vcpu-512mb-10gb"
+  TF_VAR_droplet_size: "s-1vcpu-1gb"
   
   # DigitalOcean Spaces for Terraform State
   AWS_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY }}
