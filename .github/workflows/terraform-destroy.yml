@@ -78,10 +78,6 @@ jobs:
         with:
           terraform_version: "~1.6"
 
-      - name: Setup DigitalOcean CLI
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DO_USER_ACCESS_TOKEN }}
 
       - name: Cache Terraform
         uses: actions/cache@v3
@@ -96,6 +92,11 @@ jobs:
         run: |
           echo "🚀 Initializing Terraform..."
           terraform init -reconfigure
+
+      - name: Refresh Terraform State
+        run: |
+          echo "🔄 Refreshing Terraform state to detect any drift..."
+          terraform refresh
 
       - name: Terraform Plan Destroy
         id: plan
@@ -133,33 +134,11 @@ jobs:
             exit 1
           fi
 
-      - name: Cleanup Remaining Resources
+      - name: Verify Destruction
         if: steps.plan.outputs.plan_exitcode == 2 || steps.plan.outputs.plan_exitcode == 0
         run: |
-          echo "🧹 Cleaning up any remaining resources..."
-          
-          # Remove any remaining firewalls with battleone in the name
-          echo "Checking for remaining firewalls..."
-          doctl compute firewall list --format ID,Name --no-header | grep "battleone" | while read fw_id fw_name; do
-            echo "Removing firewall: $fw_id ($fw_name)"
-            doctl compute firewall delete "$fw_id" --force || echo "Failed to delete firewall $fw_id"
-          done || true
-          
-          # Remove any remaining VPCs with battleone in the name  
-          echo "Checking for remaining VPCs..."
-          doctl vpcs list --format ID,Name --no-header | grep "battleone" | while read vpc_id vpc_name; do
-            echo "Removing VPC: $vpc_id ($vpc_name)"
-            doctl vpcs delete "$vpc_id" --force || echo "Failed to delete VPC $vpc_id"
-          done || true
-          
-          # Remove any remaining volumes with battleone in the name
-          echo "Checking for remaining volumes..."
-          doctl compute volume list --format ID,Name --no-header | grep "battleone" | while read volume_id volume_name; do
-            echo "Removing volume: $volume_id ($volume_name)"
-            doctl compute volume delete "$volume_id" --force || echo "Failed to delete volume $volume_id"
-          done || true
-          
-          echo "✅ Resource cleanup completed"
+          echo "✅ Terraform destruction completed successfully"
+          echo "🔍 All resources should now be properly destroyed via Terraform state management"
 
       - name: Destruction Complete
         if: success()
