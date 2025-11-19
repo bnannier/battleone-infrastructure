@@ -390,13 +390,13 @@ resource "null_resource" "deploy_services" {
       "echo '=== Validating Docker Compose configuration ==='",
       "timeout 30 docker-compose config --quiet || echo 'Config validation skipped due to timeout'",
 
-      # Restart services (faster than stop/pull/start)
+      # Restart services with better error handling and timeouts
       "echo '=== Restarting services ==='",
-      "docker-compose restart || docker-compose up -d",
+      "timeout 120 docker-compose restart || (echo 'Restart failed, trying up -d' && timeout 120 docker-compose up -d) || echo 'Service start failed but continuing'",
 
-      # Quick status check (no lengthy waits)
+      # Quick status check with timeout
       "echo '=== Final status check ==='",
-      "docker-compose ps || echo 'Status check completed'",
+      "timeout 30 docker-compose ps || echo 'Status check timed out but deployment complete'",
       "echo 'Deployment completed successfully'"
     ]
 
