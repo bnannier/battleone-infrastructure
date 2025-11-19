@@ -217,7 +217,7 @@ jobs:
             vector/ \
             root@$DROPLET_IP:/opt/battleone/
           
-          # Deploy stack via SSH
+          # Deploy stack via SSH with proper environment handling
           echo "🚀 Deploying Docker stack..."
           ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no root@$DROPLET_IP << 'EOF'
             set -e  # Exit on any error
@@ -226,9 +226,31 @@ jobs:
             # Ensure swarm is initialized
             docker swarm init --advertise-addr $(hostname -I | awk '{print $1}') 2>/dev/null || echo "Swarm already initialized"
             
-            # Deploy the stack with environment variables
-            echo "Deploying stack with environment variables..."
-            if source .env && docker stack deploy -c docker-compose.yml battleone; then
+            # Create deployment script that properly exports environment variables
+            cat > deploy.sh << 'DEPLOY_EOF'
+#!/bin/bash
+set -e
+
+# Load environment variables
+source .env
+
+# Export them for docker stack deploy (required for Docker Swarm)
+export POSTGRES_USER
+export POSTGRES_PASSWORD  
+export POSTGRES_DB
+export REDIS_PASSWORD
+export BETTERSTACK_SOURCE_TOKEN
+export BETTERSTACK_INGESTION_HOST
+
+# Deploy the stack
+docker stack deploy -c docker-compose.yml battleone
+DEPLOY_EOF
+            
+            chmod +x deploy.sh
+            
+            # Deploy the stack using the script
+            echo "Deploying stack with properly exported environment variables..."
+            if ./deploy.sh; then
               echo "✅ Stack deployment command succeeded"
             else
               echo "❌ Stack deployment command failed"
