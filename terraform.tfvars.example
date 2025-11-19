@@ -7,7 +7,7 @@ ssh_public_key  = "ssh-rsa YOUR_PUBLIC_KEY_HERE user@hostname"
 
 # Infrastructure Settings
 region       = "tor1"
-droplet_size = "s-2vcpu-4gb"
+droplet_size = "s-1vcpu-512mb-10gb"
 
 # Database Configuration
 postgres_password = "secure-postgres-password"
