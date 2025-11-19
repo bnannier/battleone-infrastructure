@@ -226,31 +226,19 @@ jobs:
             # Ensure swarm is initialized
             docker swarm init --advertise-addr $(hostname -I | awk '{print $1}') 2>/dev/null || echo "Swarm already initialized"
             
-            # Create deployment script that properly exports environment variables
-            cat > deploy.sh << 'DEPLOY_EOF'
-#!/bin/bash
-set -e
-
-# Load environment variables
-source .env
-
-# Export them for docker stack deploy (required for Docker Swarm)
-export POSTGRES_USER
-export POSTGRES_PASSWORD  
-export POSTGRES_DB
-export REDIS_PASSWORD
-export BETTERSTACK_SOURCE_TOKEN
-export BETTERSTACK_INGESTION_HOST
-
-# Deploy the stack
-docker stack deploy -c docker-compose.yml battleone
-DEPLOY_EOF
+            # Load and export environment variables for Docker Swarm
+            echo "Loading environment variables for Docker Swarm deployment..."
+            source .env
+            export POSTGRES_USER
+            export POSTGRES_PASSWORD  
+            export POSTGRES_DB
+            export REDIS_PASSWORD
+            export BETTERSTACK_SOURCE_TOKEN
+            export BETTERSTACK_INGESTION_HOST
             
-            chmod +x deploy.sh
-            
-            # Deploy the stack using the script
-            echo "Deploying stack with properly exported environment variables..."
-            if ./deploy.sh; then
+            # Deploy the stack with exported environment variables
+            echo "Deploying stack with exported environment variables..."
+            if docker stack deploy -c docker-compose.yml battleone; then
               echo "✅ Stack deployment command succeeded"
             else
               echo "❌ Stack deployment command failed"
