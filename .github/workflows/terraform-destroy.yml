@@ -102,10 +102,14 @@ jobs:
         run: |
           echo "📋 Creating destruction plan..."
           terraform plan -destroy -detailed-exitcode -out=destroy.tfplan
-          echo "plan_exitcode=$?" >> $GITHUB_OUTPUT
+          EXITCODE=$?
+          echo "Plan exit code: $EXITCODE"
+          echo "plan_exitcode=$EXITCODE" >> $GITHUB_OUTPUT
 
       - name: Show Destroy Plan
         run: |
+          echo "🔍 DEBUG: Plan exit code is: ${{ steps.plan.outputs.plan_exitcode }}"
+          echo "🔍 DEBUG: Checking if exit code equals 2: ${{ steps.plan.outputs.plan_exitcode == 2 }}"
           echo "## ⚠️ DESTRUCTION PLAN" >> $GITHUB_STEP_SUMMARY
           echo "**The following infrastructure will be PERMANENTLY DELETED:**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -138,6 +142,7 @@ jobs:
         if: steps.plan.outputs.plan_exitcode == 2
         run: |
           echo "🗑️ DESTROYING INFRASTRUCTURE..."
+          echo "Plan exit code was: ${{ steps.plan.outputs.plan_exitcode }}"
           echo "⚠️ This will permanently delete all resources!"
           terraform apply -auto-approve destroy.tfplan
 
