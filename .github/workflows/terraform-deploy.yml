@@ -165,33 +165,24 @@ jobs:
               body: output
             });
 
-      - name: Manual Approval
+      - name: Branch Protection Check
         if: |
           github.event_name == 'workflow_dispatch' && 
           github.event.inputs.action == 'apply' && 
           github.event.inputs.auto_approve != 'true' &&
           github.ref != 'refs/heads/main' &&
           steps.plan.outputs.plan_exitcode == '2'
-        uses: trstringer/manual-approval@v1
-        with:
-          secret: ${{ github.TOKEN }}
-          approvers: ${{ github.repository_owner }}
-          minimum-approvals: 1
-          issue-title: "🚀 Terraform Apply Approval Required"
-          issue-body: |
-            **Terraform Apply Approval Required**
-            
-            Please review the Terraform plan above and approve this workflow to proceed with applying the BattleOne infrastructure changes.
-            
-            **Action**: ${{ github.event.inputs.action }}
-            **Branch**: ${{ github.ref_name }}
-            **Commit**: ${{ github.sha }}
-            
-            **Infrastructure includes:**
-            - DigitalOcean droplet in Toronto (tor1)
-            - PostgreSQL database
-            - Redis cache
-            - Kratos identity management
+        run: |
+          echo "⚠️ DEPLOYMENT FROM NON-MAIN BRANCH"
+          echo ""
+          echo "You're trying to deploy from branch: ${{ github.ref_name }}"
+          echo "For safety, manual deployments from non-main branches require explicit approval."
+          echo ""
+          echo "To proceed, re-run with auto_approve=true:"
+          echo "gh workflow run 'Deploy BattleOne Infrastructure' --field action=apply --field auto_approve=true"
+          echo ""
+          echo "Or push your changes to the main branch for automatic deployment."
+          exit 1
 
       - name: Terraform Apply
         if: |

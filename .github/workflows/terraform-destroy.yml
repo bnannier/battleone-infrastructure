@@ -115,35 +115,24 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **This action CANNOT be undone!**" >> $GITHUB_STEP_SUMMARY
 
-      - name: Manual Approval
+      - name: Final Confirmation Check
         if: |
           github.event.inputs.auto_approve != 'true' &&
           steps.plan.outputs.plan_exitcode == '2'
-        uses: trstringer/manual-approval@v1
-        with:
-          secret: ${{ github.TOKEN }}
-          approvers: ${{ github.repository_owner }}
-          minimum-approvals: 1
-          issue-title: "⚠️ CONFIRM INFRASTRUCTURE DESTRUCTION"
-          issue-body: |
-            # ⚠️ CRITICAL: Infrastructure Destruction Approval Required
-            
-            **You are about to PERMANENTLY DELETE the entire BattleOne infrastructure.**
-            
-            **What will be destroyed:**
-            - DigitalOcean droplet in Toronto (tor1)
-            - PostgreSQL database (ALL DATA WILL BE LOST)
-            - Redis cache
-            - Kratos identity management
-            - All associated networking and storage
-            
-            **⚠️ THIS ACTION CANNOT BE UNDONE ⚠️**
-            
-            Please review the destruction plan above carefully before approving.
-            
-            **Confirmation**: ${{ github.event.inputs.confirmation }}
-            **Branch**: ${{ github.ref_name }}
-            **Commit**: ${{ github.sha }}
+        run: |
+          echo "⚠️ FINAL CONFIRMATION REQUIRED"
+          echo ""
+          echo "This workflow will PERMANENTLY DELETE all infrastructure!"
+          echo "To proceed, you must:"
+          echo "1. Have typed 'DESTROY' in the confirmation field ✅"
+          echo "2. Re-run this workflow with auto_approve=true to confirm"
+          echo ""
+          echo "💡 Re-run command:"
+          echo "gh workflow run 'Destroy BattleOne Infrastructure' --field confirmation=DESTROY --field auto_approve=true"
+          echo ""
+          echo "❌ Stopping here to prevent accidental destruction."
+          echo "Review the destruction plan above, then re-run with auto_approve=true if you're certain."
+          exit 1
 
       - name: Terraform Destroy
         if: steps.plan.outputs.plan_exitcode == '2'
