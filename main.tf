@@ -234,18 +234,18 @@ resource "null_resource" "setup_volume" {
       # Handle DigitalOcean volume naming - use the actual mounted path directly
       "echo '=== Setting up service directories ==='",
       "VOLUME_PATH='/mnt/battleone_data'",  # DigitalOcean mounts volumes with underscores
-      "echo \"Using volume path: \$VOLUME_PATH\"",
+      "echo \"Using volume path: $$VOLUME_PATH\"",
       
       # Create directories for services
       "echo '=== Creating service directories ==='",
-      "mkdir -p \$VOLUME_PATH/postgres",
-      "mkdir -p \$VOLUME_PATH/redis", 
-      "mkdir -p \$VOLUME_PATH/kratos",
+      "mkdir -p $$VOLUME_PATH/postgres",
+      "mkdir -p $$VOLUME_PATH/redis", 
+      "mkdir -p $$VOLUME_PATH/kratos",
       "echo 'Service directories created'",
 
       # Verify directories were created
       "echo '=== Verifying directories ==='",
-      "if ls -la \$VOLUME_PATH/; then",
+      "if ls -la $$VOLUME_PATH/; then",
       "  echo 'Directory listing successful'",
       "else",
       "  echo 'ERROR: Cannot list directories'",
@@ -254,35 +254,35 @@ resource "null_resource" "setup_volume" {
 
       # Set proper permissions with error checking  
       "echo '=== Setting permissions ==='",
-      "if [ -d \"\$VOLUME_PATH/postgres\" ]; then",
-      "  chown -R 999:999 \$VOLUME_PATH/postgres",
+      "if [ -d \"$$VOLUME_PATH/postgres\" ]; then",
+      "  chown -R 999:999 $$VOLUME_PATH/postgres",
       "  echo 'PostgreSQL permissions set'",
       "else",
-      "  echo 'ERROR: PostgreSQL directory not found at \$VOLUME_PATH/postgres'",
+      "  echo 'ERROR: PostgreSQL directory not found at $$VOLUME_PATH/postgres'",
       "  exit 1",
       "fi",
       
-      "if [ -d \"\$VOLUME_PATH/redis\" ]; then",
-      "  chown -R 999:999 \$VOLUME_PATH/redis",
+      "if [ -d \"$$VOLUME_PATH/redis\" ]; then",
+      "  chown -R 999:999 $$VOLUME_PATH/redis",
       "  echo 'Redis permissions set'",
       "else",
-      "  echo 'ERROR: Redis directory not found at \$VOLUME_PATH/redis'",
+      "  echo 'ERROR: Redis directory not found at $$VOLUME_PATH/redis'",
       "  exit 1",
       "fi",
       
-      "if [ -d \"\$VOLUME_PATH/kratos\" ]; then",
-      "  chmod 755 \$VOLUME_PATH/kratos",
+      "if [ -d \"$$VOLUME_PATH/kratos\" ]; then",
+      "  chmod 755 $$VOLUME_PATH/kratos",
       "  echo 'Kratos permissions set'",
       "else",
-      "  echo 'ERROR: Kratos directory not found at \$VOLUME_PATH/kratos'",
+      "  echo 'ERROR: Kratos directory not found at $$VOLUME_PATH/kratos'",
       "  exit 1",
       "fi",
       
       "echo '=== Volume setup complete ==='",
       "echo 'Final directory listing:'",
-      "ls -la \$VOLUME_PATH/",
+      "ls -la $$VOLUME_PATH/",
       "echo 'Final disk usage:'",
-      "df -h \$VOLUME_PATH"
+      "df -h $$VOLUME_PATH"
     ]
 
     connection {
