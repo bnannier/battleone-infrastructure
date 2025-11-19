@@ -6,11 +6,11 @@ terraform {
 
   backend "s3" {
     endpoints = {
-      s3 = "https://tor1.digitaloceanspaces.com"
+      s3 = "https://nyc3.digitaloceanspaces.com"
     }
     bucket = "battleone-terraform-state"
     key    = "terraform.tfstate"
-    region = "us-east-1" # Required for S3 compatibility, actual region is tor1
+    region = "us-east-1" # Required for S3 compatibility, actual region is nyc3
 
     skip_credentials_validation = true
     skip_metadata_api_check     = true
