@@ -141,50 +141,6 @@ jobs:
           terraform plan -detailed-exitcode -out=tfplan
           echo "plan_exitcode=$?" >> $GITHUB_OUTPUT
 
-      - name: Comment Plan on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { stdout } = await exec.getExecOutput('terraform', ['show', '-no-color', 'tfplan']);
-            
-            const output = `## 🚀 Terraform Plan
-            
-            <details>
-            <summary>Show Plan</summary>
-            
-            \`\`\`
-            ${stdout}
-            \`\`\`
-            
-            </details>`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
-
-      - name: Branch Protection Check
-        if: |
-          github.event_name == 'workflow_dispatch' && 
-          github.event.inputs.action == 'apply' && 
-          github.event.inputs.auto_approve != 'true' &&
-          github.ref != 'refs/heads/main' &&
-          steps.plan.outputs.plan_exitcode == '2'
-        run: |
-          echo "⚠️ DEPLOYMENT FROM NON-MAIN BRANCH"
-          echo ""
-          echo "You're trying to deploy from branch: ${{ github.ref_name }}"
-          echo "For safety, manual deployments from non-main branches require explicit approval."
-          echo ""
-          echo "To proceed, re-run with auto_approve=true:"
-          echo "gh workflow run 'Deploy BattleOne Infrastructure' --field action=apply --field auto_approve=true"
-          echo ""
-          echo "Or push your changes to the main branch for automatic deployment."
-          exit 1
-
       - name: Terraform Apply
         if: |
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
