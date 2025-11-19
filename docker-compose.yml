@@ -128,13 +128,13 @@ services:
       - /opt/battleone/vector/vector.yml:/etc/vector/vector.yml:ro
     networks:
       - battleone-network
-    command: ["vector", "--config", "/etc/vector/vector.yml"]
+    command: ["--config", "/etc/vector/vector.yml"]
     depends_on:
       - postgres
       - redis
       - kratos
     healthcheck:
-      test: ["CMD", "vector", "validate", "/etc/vector/vector.yml"]
+      test: ["CMD", "vector", "validate", "--config", "/etc/vector/vector.yml"]
       interval: 30s
       timeout: 10s
       retries: 3
