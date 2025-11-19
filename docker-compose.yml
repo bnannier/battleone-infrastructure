@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - /mnt/battleone-data/postgres:/var/lib/postgresql/data
+      - /mnt/battleone_data/postgres:/var/lib/postgresql/data
       - /opt/battleone/postgres:/docker-entrypoint-initdb.d
     networks:
       - battleone-network
@@ -34,7 +34,7 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     command: sh -c 'echo "appendonly yes" > /etc/redis.conf && echo "requirepass \"$$REDIS_PASSWORD\"" >> /etc/redis.conf && redis-server /etc/redis.conf'
     volumes:
-      - /mnt/battleone-data/redis:/data
+      - /mnt/battleone_data/redis:/data
     networks:
       - battleone-network
     healthcheck:
