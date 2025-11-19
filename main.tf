@@ -232,11 +232,21 @@ resource "null_resource" "setup_volume" {
       "  echo 'Already in fstab'",
       "fi",
 
+      # Handle DigitalOcean volume naming (battleone_data vs battleone-data)
+      "echo '=== Handling volume naming compatibility ==='",
+      "if [ -d '/mnt/battleone_data' ] && [ ! -L '/mnt/battleone-data' ]; then",
+      "  echo 'Creating symlink for volume name compatibility'", 
+      "  ln -sf /mnt/battleone_data /mnt/battleone-data",
+      "  VOLUME_PATH='/mnt/battleone_data'",
+      "else",
+      "  VOLUME_PATH='/mnt/battleone-data'",
+      "fi",
+      
       # Create directories for services
       "echo '=== Creating service directories ==='",
-      "mkdir -p /mnt/battleone-data/postgres",
-      "mkdir -p /mnt/battleone-data/redis", 
-      "mkdir -p /mnt/battleone-data/kratos",
+      "mkdir -p $VOLUME_PATH/postgres",
+      "mkdir -p $VOLUME_PATH/redis", 
+      "mkdir -p $VOLUME_PATH/kratos",
       "echo 'Service directories created'",
 
       # Verify directories were created
@@ -250,24 +260,24 @@ resource "null_resource" "setup_volume" {
 
       # Set proper permissions with error checking
       "echo '=== Setting permissions ==='",
-      "if [ -d '/mnt/battleone-data/postgres' ]; then",
-      "  chown -R 999:999 /mnt/battleone-data/postgres",
+      "if [ -d '$VOLUME_PATH/postgres' ]; then",
+      "  chown -R 999:999 $VOLUME_PATH/postgres",
       "  echo 'PostgreSQL permissions set'",
       "else",
       "  echo 'ERROR: PostgreSQL directory not found'",
       "  exit 1",
       "fi",
       
-      "if [ -d '/mnt/battleone-data/redis' ]; then",
-      "  chown -R 999:999 /mnt/battleone-data/redis",
+      "if [ -d '$VOLUME_PATH/redis' ]; then",
+      "  chown -R 999:999 $VOLUME_PATH/redis",
       "  echo 'Redis permissions set'",
       "else",
       "  echo 'ERROR: Redis directory not found'",
       "  exit 1",
       "fi",
       
-      "if [ -d '/mnt/battleone-data/kratos' ]; then",
-      "  chmod 755 /mnt/battleone-data/kratos",
+      "if [ -d '$VOLUME_PATH/kratos' ]; then",
+      "  chmod 755 $VOLUME_PATH/kratos",
       "  echo 'Kratos permissions set'",
       "else",
       "  echo 'ERROR: Kratos directory not found'",
@@ -277,8 +287,10 @@ resource "null_resource" "setup_volume" {
       "echo '=== Volume setup complete ==='",
       "echo 'Final directory listing:'",
       "ls -la /mnt/battleone-data/",
+      "echo 'Actual volume path directory listing:'",
+      "ls -la $VOLUME_PATH/",
       "echo 'Final disk usage:'",
-      "df -h /mnt/battleone-data"
+      "df -h $VOLUME_PATH"
     ]
 
     connection {
