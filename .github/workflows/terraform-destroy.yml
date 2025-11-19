@@ -118,7 +118,7 @@ jobs:
       - name: Final Confirmation Check
         if: |
           github.event.inputs.auto_approve != 'true' &&
-          steps.plan.outputs.plan_exitcode == '2'
+          steps.plan.outputs.plan_exitcode == 2
         run: |
           echo "⚠️ FINAL CONFIRMATION REQUIRED"
           echo ""
@@ -135,14 +135,14 @@ jobs:
           exit 1
 
       - name: Terraform Destroy
-        if: steps.plan.outputs.plan_exitcode == '2'
+        if: steps.plan.outputs.plan_exitcode == 2
         run: |
           echo "🗑️ DESTROYING INFRASTRUCTURE..."
           echo "⚠️ This will permanently delete all resources!"
           terraform apply -auto-approve destroy.tfplan
 
       - name: Cleanup Remaining Resources
-        if: steps.plan.outputs.plan_exitcode == '2'
+        if: steps.plan.outputs.plan_exitcode == 2
         run: |
           echo "🧹 Cleaning up any remaining resources..."
           
