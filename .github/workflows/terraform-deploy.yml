@@ -184,13 +184,7 @@ jobs:
             
             # Load and export environment variables for Docker Swarm
             echo "Loading environment variables for Docker Swarm deployment..."
-            source .env
-            export POSTGRES_USER
-            export POSTGRES_PASSWORD  
-            export POSTGRES_DB
-            export REDIS_PASSWORD
-            export BETTERSTACK_SOURCE_TOKEN
-            export BETTERSTACK_INGESTION_HOST
+            export $(cat .env | xargs)
             
             # Deploy the stack with exported environment variables
             echo "Deploying stack with exported environment variables..."
