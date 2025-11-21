@@ -184,8 +184,10 @@ jobs:
             # Create mount directories for services
             echo "Creating mount directories for services..."
             mkdir -p /mnt/battleone_data/{postgres,redis,kratos}
+            mkdir -p /var/lib/better-stack
             chown -R 1000:1000 /mnt/battleone_data/postgres
             chown -R 999:999 /mnt/battleone_data/redis
+            chown -R 1000:1000 /var/lib/better-stack
             echo "Mount directories created with proper permissions"
             
             # Load and export environment variables for Docker Swarm
