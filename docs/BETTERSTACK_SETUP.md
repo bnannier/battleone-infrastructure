@@ -66,7 +66,7 @@ gh workflow run "Deploy BattleOne Infrastructure" --field action=apply
    - `battleone-postgres`
    - `battleone-redis` 
    - `battleone-kratos`
-   - `battleone-vector`
+   - `battleone-monitoring`
 
 ### 3. Test Log Queries
 
@@ -95,7 +95,7 @@ ORDER BY dt DESC
 
 ### Key Metrics Available
 
-- **Host Metrics**: CPU, memory, disk usage from Vector agent
+- **Host Metrics**: CPU, memory, disk usage from Better Stack collector
 - **Container Logs**: Real-time logs from all Docker services
 - **Service Health**: Automatic service discovery and monitoring
 - **Custom Tags**: Environment, service, hostname automatically tagged
@@ -167,17 +167,17 @@ If migrating from Datadog:
 
 1. **Check secrets** - Verify `BETTERSTACK_SOURCE_TOKEN` in GitHub
 2. **Check deployment** - Review GitHub Actions logs for errors
-3. **Check Vector agent** - SSH to droplet and check container logs:
+3. **Check Better Stack collector** - SSH to droplet and check container logs:
    ```bash
    ssh root@DROPLET_IP
    cd /opt/battleone
-   docker-compose logs vector-agent
+   docker-compose logs better-stack-collector
    ```
 
 ### High Log Volume
 
 1. **Monitor usage** - Check Better Stack → **Sources** → **Usage**
-2. **Filter logs** - Update Vector configuration to exclude noisy logs
+2. **Filter logs** - Configure Better Stack collector to exclude noisy logs
 3. **Upgrade plan** - Consider paid plan for higher limits
 
 ### Query Performance

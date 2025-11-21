@@ -23,8 +23,7 @@ runcmd:
   # Create application directory structure
   - mkdir -p /opt/battleone
   - mkdir -p /opt/battleone/kratos
-  - mkdir -p /opt/battleone/postgres  
-  - mkdir -p /opt/battleone/vector
+  - mkdir -p /opt/battleone/postgres
   
   # Install Docker Compose (if not already installed)
   - curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose

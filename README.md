@@ -18,7 +18,7 @@ This repository contains Terraform configuration to deploy the BattleOne infrast
 
 - **Platform**: DigitalOcean Droplet + Spaces + VPC
 - **Region**: Toronto (tor1) - configurable
-- **Services**: PostgreSQL, Redis, Kratos, Better Stack Vector Agent
+- **Services**: PostgreSQL, Redis, Kratos, Better Stack Native Collector
 - **State Storage**: DigitalOcean Spaces (S3-compatible)
 - **Deployment**: GitHub Actions + Terraform
 - **Monitoring**: Better Stack (modern observability platform)
@@ -51,7 +51,7 @@ This repository contains Terraform configuration to deploy the BattleOne infrast
 - **PostgreSQL 15**: Primary database with persistent storage
 - **Redis 7**: Cache and session storage with authentication  
 - **Kratos v1.0.0**: Identity and user management system
-- **Better Stack Vector Agent**: Modern log collection and monitoring
+- **Better Stack Native Collector**: eBPF-based observability with automatic instrumentation
 
 ### Infrastructure  
 - **DigitalOcean Droplet**: s-2vcpu-4gb (scalable)
@@ -193,7 +193,7 @@ docker-compose logs [service_name]
 docker-compose logs postgres
 docker-compose logs redis  
 docker-compose logs kratos
-docker-compose logs vector-agent
+docker-compose logs better-stack-collector
 ```
 
 ### Monitoring Dashboard

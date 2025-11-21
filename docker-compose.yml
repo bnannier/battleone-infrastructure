@@ -115,28 +115,27 @@ services:
         service: battleone-kratos
         environment: production
 
-  # Better Stack Vector Agent for monitoring
-  vector-agent:
-    image: timberio/vector:latest-alpine
+  # Better Stack Native Collector for monitoring
+  better-stack-collector:
+    image: betterstack/collector:latest
     environment:
-      - BETTERSTACK_SOURCE_TOKEN=${BETTERSTACK_SOURCE_TOKEN}
-      - BETTERSTACK_INGESTION_HOST=${BETTERSTACK_INGESTION_HOST:-in.logs.betterstack.com}
+      - COLLECTOR_SECRET=${BETTERSTACK_SOURCE_TOKEN}
+      - VECTOR_LOG_FORMAT=json
+      - HOSTNAME=battleone-droplet
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /opt/battleone/vector/vector.yml:/etc/vector/vector.yml:ro
+      - /:/host:ro
+      - /var/lib/better-stack:/var/lib/better-stack
+      - docker-metadata:/enrichment:rw
+    ports:
+      - "127.0.0.1:34320:34320"
+      - "127.0.0.1:33000:33000"
     networks:
       - battleone-network
-    command: ["--config", "/etc/vector/vector.yml"]
-    depends_on:
-      - postgres
-      - redis
-      - kratos
     healthcheck:
-      test: ["CMD", "vector", "validate", "--config", "/etc/vector/vector.yml"]
+      test: ["CMD-SHELL", "if [ -x /var/lib/better-stack/collector/healthcheck.sh ]; then /var/lib/better-stack/collector/healthcheck.sh; else exit 0; fi"]
       interval: 30s
       timeout: 10s
+      start_period: 60s
       retries: 3
     deploy:
       replicas: 1
@@ -145,11 +144,14 @@ services:
           - node.role == manager
       restart_policy:
         condition: on-failure
-        delay: 10s
-        max_attempts: 3
+        delay: 15s
+        max_attempts: 5
       labels:
-        service: battleone-vector
+        service: battleone-monitoring
         environment: production
+
+volumes:
+  docker-metadata:
 
 networks:
   battleone-network:
