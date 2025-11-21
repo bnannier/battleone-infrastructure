@@ -182,6 +182,13 @@ jobs:
             # Ensure swarm is initialized
             docker swarm init --advertise-addr $(hostname -I | awk '{print $1}') 2>/dev/null || echo "Swarm already initialized"
             
+            # Create mount directories for services
+            echo "Creating mount directories for services..."
+            mkdir -p /mnt/battleone_data/{postgres,redis,kratos}
+            chown -R 1000:1000 /mnt/battleone_data/postgres
+            chown -R 999:999 /mnt/battleone_data/redis
+            echo "Mount directories created with proper permissions"
+            
             # Load and export environment variables for Docker Swarm
             echo "Loading environment variables for Docker Swarm deployment..."
             export $(cat .env | xargs)
