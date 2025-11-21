@@ -170,7 +170,6 @@ jobs:
             docker-compose.yml \
             kratos/ \
             postgres/ \
-            vector/ \
             root@$DROPLET_IP:/opt/battleone/
           
           # Deploy stack via SSH with proper environment handling
