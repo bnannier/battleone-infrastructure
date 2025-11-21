@@ -39,8 +39,9 @@ sinks:
     method: post
     encoding:
       codec: json
-    headers:
-      Authorization: "Bearer ${BETTERSTACK_SOURCE_TOKEN}"
+    auth:
+      strategy: "bearer"
+      token: "${BETTERSTACK_SOURCE_TOKEN}"
     compression: gzip
     healthcheck:
       enabled: true
