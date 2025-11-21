@@ -123,9 +123,16 @@ services:
       - VECTOR_LOG_FORMAT=json
       - HOSTNAME=battleone-droplet
     volumes:
-      - /:/host:ro
-      - /var/lib/better-stack:/var/lib/better-stack
-      - docker-metadata:/enrichment:rw
+      - type: bind
+        source: /
+        target: /host
+        read_only: true
+      - type: bind
+        source: /var/lib/better-stack
+        target: /var/lib/better-stack
+      - type: volume
+        source: docker-metadata
+        target: /enrichment
     ports:
       - "127.0.0.1:34320:34320"
       - "127.0.0.1:33000:33000"
