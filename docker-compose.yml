@@ -118,10 +118,9 @@ services:
   # Better Stack Native Collector for monitoring
   better-stack-collector:
     image: betterstack/collector:latest
+    privileged: true
     environment:
       - COLLECTOR_SECRET=${BETTERSTACK_SOURCE_TOKEN}
-      - VECTOR_LOG_FORMAT=json
-      - HOSTNAME=battleone-droplet
     volumes:
       - type: bind
         source: /
@@ -130,20 +129,20 @@ services:
       - type: bind
         source: /var/lib/better-stack
         target: /var/lib/better-stack
-      - type: volume
-        source: docker-metadata
-        target: /enrichment
-    ports:
-      - "127.0.0.1:34320:34320"
-      - "127.0.0.1:33000:33000"
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: bind
+        source: /proc
+        target: /host/proc
+        read_only: true
+      - type: bind
+        source: /sys
+        target: /host/sys
+        read_only: true
     networks:
       - battleone-network
-    healthcheck:
-      test: ["CMD-SHELL", "if [ -x /var/lib/better-stack/collector/healthcheck.sh ]; then /var/lib/better-stack/collector/healthcheck.sh; else exit 0; fi"]
-      interval: 30s
-      timeout: 10s
-      start_period: 60s
-      retries: 3
     deploy:
       replicas: 1
       placement:
