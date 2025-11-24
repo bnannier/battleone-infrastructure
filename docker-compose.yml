@@ -121,6 +121,10 @@ services:
     privileged: true
     environment:
       - COLLECTOR_SECRET=${BETTERSTACK_SOURCE_TOKEN}
+      - NAMESPACE=battleone
+      - COLLECTOR_NAME=battleone-collector
+      - POD_NAME=battleone-collector
+      - CONTAINER_NAME=battleone-collector
     volumes:
       - type: bind
         source: /
