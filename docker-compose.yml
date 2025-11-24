@@ -125,6 +125,8 @@ services:
       - COLLECTOR_NAME=battleone-collector
       - POD_NAME=battleone-collector
       - CONTAINER_NAME=battleone-collector
+      - KUBERNETES_LOGS_ENABLED=false
+      - DEPLOYMENT_TYPE=docker
     volumes:
       - type: bind
         source: /
